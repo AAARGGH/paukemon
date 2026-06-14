@@ -126,6 +126,7 @@ function directDamageEstimate(state: GameState, context: AttackContext): number 
   if (!attacker || !target) return 0;
   const attackerCard = getCard(attacker);
   const targetCard = getCard(target);
+
   switch (context.attackId) {
     case 'ABSORPTION':
       return 40;
@@ -163,6 +164,7 @@ function switchToFirstLivingOther(state: GameState, owner: Owner, currentUid: st
 
 function resolveDefenderReactions(state: GameState, context: AttackContext): boolean {
   if (context.suppressReactions) return false;
+
   const attacker = findInstance(state, context.attackerOwner, context.attackerUid);
   const target = findInstance(state, context.targetOwner, context.targetUid);
   if (!attacker || !target || !isAlive(attacker) || !isAlive(target)) return true;
@@ -225,8 +227,9 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
 
   const attackerCard = getCard(attacker);
   const targetCard = getCard(target);
+  const attackName = attackerCard.attacks.find((attack) => attack.id === context.attackId)?.name ?? context.attackId;
 
-  log(state, `${ownerLabel(context.attackerOwner)}: ${attackerCard.name} nutzt ${attackerCard.attacks.find((a) => a.id === context.attackId)?.name ?? context.attackId}.`);
+  log(state, `${ownerLabel(context.attackerOwner)}: ${attackerCard.name} nutzt ${attackName}.`);
 
   if (resolveDefenderReactions(state, context)) return;
 
@@ -306,11 +309,14 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       break;
 
     case 'ARBEIT_ABWAELZEN': {
-      const helper = livingTeam(state, context.attackerOwner).find((item) => item.uid !== attacker.uid && getCard(item).attacks[0]?.id !== 'ARBEIT_ABWAELZEN');
+      const helper = livingTeam(state, context.attackerOwner).find(
+        (item) => item.uid !== attacker.uid && getCard(item).attacks[0]?.id !== 'ARBEIT_ABWAELZEN',
+      );
       if (!helper) {
         log(state, `${attackerCard.name} findet niemanden, auf den er die Arbeit abwälzen kann.`);
         break;
       }
+
       const helperCard = getCard(helper);
       const standard = helperCard.attacks.find((attack) => attack.isStandard) ?? helperCard.attacks[0];
       log(state, `${attackerCard.name} wälzt die Arbeit auf ${helperCard.name} ab.`);
@@ -344,16 +350,19 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       const copymonLocations = (['player', 'enemy'] as const)
         .flatMap((owner) => livingTeam(state, owner).map((instance) => ({ owner, instance })))
         .filter(({ instance }) => instance.cardId === 'copymon');
+
       if (copymonLocations.length === 0) {
         log(state, `Copymon ist nicht lebend im Spiel. Ying & Yang scheitert.`);
         break;
       }
+
       attacker.removed = true;
       attacker.currentLp = 0;
       for (const location of copymonLocations) {
         location.instance.removed = true;
         location.instance.currentLp = 0;
       }
+
       for (const owner of ['player', 'enemy'] as const) {
         for (const instance of livingTeam(state, owner)) {
           instance.currentLp = getCard(instance).maxLp;
@@ -380,6 +389,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
         log(state, `${targetCard.name} ist nicht weiblich. Verführung scheitert.`);
         break;
       }
+
       const result = coin();
       log(state, `Verführung-Münzwurf = ${result}.`);
       if (result === 'Kopf') {
@@ -421,6 +431,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
 function ensureActiveAlive(state: GameState, owner: Owner): void {
   const active = getTeam(state, owner).find((item) => item.uid === state[activeUidKey(owner)]);
   if (active && isAlive(active)) return;
+
   const replacement = livingTeam(state, owner)[0];
   if (replacement) {
     state[activeUidKey(owner)] = replacement.uid;
@@ -431,9 +442,40 @@ function ensureActiveAlive(state: GameState, owner: Owner): void {
 function checkWinner(state: GameState): void {
   const playerAlive = livingTeam(state, 'player').length > 0;
   const enemyAlive = livingTeam(state, 'enemy').length > 0;
+
   if (!playerAlive && !enemyAlive) state.winner = 'enemy';
   else if (!playerAlive) state.winner = 'enemy';
   else if (!enemyAlive) state.winner = 'player';
+}
+
+function processForcedSkips(state: GameState): void {
+  let safety = 0;
+
+  while (!state.winner && safety < 50) {
+    safety += 1;
+
+    ensureActiveAlive(state, 'player');
+    ensureActiveAlive(state, 'enemy');
+    checkWinner(state);
+    if (state.winner) return;
+
+    const active = getActive(state, state.turn);
+    if (active.skipTurns <= 0) return;
+
+    const card = getCard(active);
+    active.skipTurns -= 1;
+    log(state, `${ownerLabel(state.turn)}: ${card.name} setzt aus. Verbleibend: ${active.skipTurns}.`);
+
+    state.turn = opponent(state.turn);
+    state.actionsLeft = 1;
+    state.eventPlayedThisTurn = false;
+  }
+}
+
+export function normalizeTurn(state: GameState): GameState {
+  const next = cloneState(state);
+  processForcedSkips(next);
+  return next;
 }
 
 function advanceTurn(state: GameState): void {
@@ -446,32 +488,29 @@ function advanceTurn(state: GameState): void {
   state.actionsLeft = 1;
   state.eventPlayedThisTurn = false;
 
-  let safety = 0;
-  while (!state.winner && safety < 20) {
-    safety += 1;
-    const active = getActive(state, state.turn);
-    const card = getCard(active);
-    if (active.skipTurns <= 0) break;
-    active.skipTurns -= 1;
-    log(state, `${ownerLabel(state.turn)}: ${card.name} setzt aus. Verbleibend: ${active.skipTurns}.`);
-    state.turn = opponent(state.turn);
-    state.actionsLeft = 1;
-    state.eventPlayedThisTurn = false;
-    ensureActiveAlive(state, 'player');
-    ensureActiveAlive(state, 'enemy');
-    checkWinner(state);
-  }
+  processForcedSkips(state);
 }
 
 export function executeAttack(state: GameState, attackId: AttackId): GameState {
   const next = cloneState(state);
   if (next.winner) return next;
+
+  ensureActiveAlive(next, 'player');
+  ensureActiveAlive(next, 'enemy');
+  checkWinner(next);
+  if (next.winner) return next;
+
   const attackerOwner = next.turn;
   const targetOwner = opponent(attackerOwner);
   const attacker = getActive(next, attackerOwner);
   const target = getActive(next, targetOwner);
 
-  if (!isAlive(attacker) || attacker.skipTurns > 0 || next.actionsLeft <= 0) return next;
+  if (!isAlive(attacker)) return next;
+  if (attacker.skipTurns > 0) {
+    processForcedSkips(next);
+    return next;
+  }
+  if (next.actionsLeft <= 0) return next;
 
   applyAttackEffect(next, {
     attackerOwner,
@@ -484,10 +523,13 @@ export function executeAttack(state: GameState, attackId: AttackId): GameState {
   ensureActiveAlive(next, 'player');
   ensureActiveAlive(next, 'enemy');
   checkWinner(next);
+
   if (!next.winner) {
     next.actionsLeft -= 1;
     if (next.actionsLeft <= 0) advanceTurn(next);
+    else processForcedSkips(next);
   }
+
   return next;
 }
 
@@ -495,15 +537,31 @@ export function switchActive(state: GameState, owner: Owner, instanceUid: string
   const next = cloneState(state);
   const candidate = findInstance(next, owner, instanceUid);
   if (!candidate || !isAlive(candidate)) return next;
+
   next[activeUidKey(owner)] = instanceUid;
   log(next, `${ownerLabel(owner)} wechselt ${getCard(candidate).name} ein.`);
+
   if (owner === next.turn) advanceTurn(next);
+  else processForcedSkips(next);
+
   return next;
 }
 
 export function playRandomEvent(state: GameState): GameState {
   const next = cloneState(state);
   if (next.winner || next.eventPlayedThisTurn) return next;
+
+  ensureActiveAlive(next, 'player');
+  ensureActiveAlive(next, 'enemy');
+  checkWinner(next);
+  if (next.winner) return next;
+
+  const active = getActive(next, next.turn);
+  if (active.skipTurns > 0) {
+    processForcedSkips(next);
+    return next;
+  }
+
   next.eventPlayedThisTurn = true;
   const event = eventCards[Math.floor(Math.random() * eventCards.length)];
   log(next, `Ereigniskarte: ${event.name}.`);
@@ -548,6 +606,8 @@ export function playRandomEvent(state: GameState): GameState {
   ensureActiveAlive(next, 'player');
   ensureActiveAlive(next, 'enemy');
   checkWinner(next);
+  if (!next.winner) processForcedSkips(next);
+
   return next;
 }
 
