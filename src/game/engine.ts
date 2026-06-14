@@ -15,8 +15,10 @@ const NATURAL_SCIENCES = ['Mathe', 'Physik', 'Chemie'];
 
 export const EVENT_CHARGE_MAX = 3;
 
-function coin(): Coin {
-  return Math.random() < 0.5 ? 'Kopf' : 'Zahl';
+function flipCoin(state: GameState, label: string): Coin {
+  const result: Coin = Math.random() < 0.5 ? 'Kopf' : 'Zahl';
+  state.lastCoinCue = { result, label, nonce: Date.now() + Math.random() };
+  return result;
 }
 
 function uid(prefix: string): string {
@@ -236,7 +238,7 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
     }
 
     if (reaction.id === 'UNTERBRECHEN') {
-      const result = coin();
+      const result = flipCoin(state, `${targetCard.name} nutzt Unterbrechen*`);
       log(state, `${targetCard.name} nutzt Unterbrechen*: Münzwurf = ${result}.`);
       if (result === 'Zahl') {
         log(state, `Die Attacke von ${attackerCard.name} ist wirkungslos.`);
@@ -245,7 +247,7 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
     }
 
     if (reaction.id === 'PIEPSER') {
-      const result = coin();
+      const result = flipCoin(state, `${targetCard.name} nutzt Piepser*`);
       log(state, `${targetCard.name} nutzt Piepser*: Münzwurf = ${result}.`);
       if (result === 'Zahl' && switchToFirstLivingOther(state, context.targetOwner, target.uid)) {
         log(state, `${targetCard.name} entkommt der Attacke.`);
@@ -254,7 +256,7 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
     }
 
     if (reaction.id === 'SARKASTISCHER_KONTER' && attackerCard.iq < targetCard.iq) {
-      const result = coin();
+      const result = flipCoin(state, `${targetCard.name} nutzt Sarkastischer Konter*`);
       log(state, `${targetCard.name} nutzt Sarkastischer Konter*: Münzwurf = ${result}.`);
       if (result === 'Kopf') {
         const reflectedDamage = directDamageEstimate(state, context);
@@ -391,7 +393,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
 
     case 'TANZEN': {
       heal(state, context.attackerOwner, attacker.uid, 20);
-      const result = coin();
+      const result = flipCoin(state, `${attackerCard.name} tanzt`);
       log(state, `Tanzen-Münzwurf = ${result}.`);
       if (result === 'Kopf') addSkip(state, context.targetOwner, target.uid, 1);
       break;
@@ -449,7 +451,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
         break;
       }
 
-      const result = coin();
+      const result = flipCoin(state, `${attackerCard.name} versucht Verführung`);
       log(state, `Verführung-Münzwurf = ${result}.`);
       if (result === 'Kopf') {
         const fromTeam = getTeam(state, context.targetOwner);
@@ -478,7 +480,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
     }
 
     case 'PHASER_AUF_BETAEUBUNG': {
-      const result = coin();
+      const result = flipCoin(state, `${attackerCard.name} nutzt Phaser`);
       log(state, `Phaser-Münzwurf = ${result}.`);
       if (result === 'Kopf') addSkip(state, context.targetOwner, target.uid, 1);
       else damage(state, context.targetOwner, target.uid, 20);
@@ -623,8 +625,8 @@ export function resolvePendingChoice(state: GameState, choice: PendingChoiceReso
         addSkip(next, pending.targetOwner, target.uid, 1);
       }
     }
-  } else {
-    if (typeof choice === 'string') return next;
+  } else if (pending.kind === 'ARBEIT_ABWAELZEN') {
+    if (typeof choice === 'string' || choice.kind !== 'HELPER') return next;
     const helper = findInstance(next, pending.attackerOwner, choice.helperUid);
     const target = findInstance(next, pending.targetOwner, pending.targetUid);
     if (!helper || !target || !isAlive(helper)) {
@@ -642,6 +644,16 @@ export function resolvePendingChoice(state: GameState, choice: PendingChoiceReso
         targetUid: target.uid,
         attackId: standard.id,
       });
+    }
+  } else if (pending.kind === 'FACHKONFERENZ') {
+    if (typeof choice === 'string' || choice.kind !== 'SUBJECT') return next;
+    if (!pending.subjects.includes(choice.subject)) return next;
+
+    log(next, `Fachkonferenz wählt: ${choice.subject}.`);
+    for (const owner of ['player', 'enemy'] as const) {
+      for (const instance of livingTeam(next, owner)) {
+        if (getCard(instance).subjects.includes(choice.subject)) addSkip(next, owner, instance.uid, 3);
+      }
     }
   }
 
@@ -705,14 +717,13 @@ export function playRandomEvent(state: GameState): GameState {
       break;
 
     case 'FACHKONFERENZ': {
-      const subjects = Array.from(new Set(paukemonCards.flatMap((card) => card.subjects)));
-      const subject = subjects[Math.floor(Math.random() * subjects.length)];
-      log(next, `Fachkonferenz wählt: ${subject}.`);
-      for (const owner of ['player', 'enemy'] as const) {
-        for (const instance of livingTeam(next, owner)) {
-          if (getCard(instance).subjects.includes(subject)) addSkip(next, owner, instance.uid, 3);
-        }
-      }
+      const subjects = Array.from(new Set(paukemonCards.flatMap((card) => card.subjects))).sort((a, b) => a.localeCompare(b, 'de'));
+      next.pendingChoice = {
+        kind: 'FACHKONFERENZ',
+        chooser: next.turn,
+        subjects,
+      };
+      log(next, `${ownerLabel(next.turn)} muss für die Fachkonferenz ein Fach auswählen.`);
       break;
     }
 

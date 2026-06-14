@@ -192,6 +192,31 @@ function PendingChoiceDialog({ state, setState }: { state: GameState; setState: 
   const pending = state.pendingChoice;
   if (!pending) return null;
 
+  if (pending.kind === 'FACHKONFERENZ') {
+    return (
+      <div className="choice-backdrop choice-backdrop-fachkonferenz" role="dialog" aria-modal="true">
+        <section className="choice-dialog choice-dialog-wide fachkonferenz-dialog">
+          <p className="eyebrow">Auswahl für {ownerLabel(pending.chooser)}</p>
+          <h2>Fachkonferenz!</h2>
+          <p>
+            {ownerLabel(pending.chooser)} darf das Fach auswählen. Alle Paukémon mit diesem Fach müssen 3 Runden aussetzen.
+          </p>
+          <div className="subject-choice-grid">
+            {pending.subjects.map((subject) => (
+              <button
+                key={subject}
+                className="subject-choice-button"
+                onClick={() => setState((current) => resolvePendingChoice(current, { kind: 'SUBJECT', subject }))}
+              >
+                {subject}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   const attacker = findInstance(state, pending.attackerOwner, pending.attackerUid);
   const target = findInstance(state, pending.targetOwner, pending.targetUid);
   const attackerName = attacker ? getCard(attacker).name : 'Copymon';
@@ -316,6 +341,21 @@ export default function App() {
   }, [state.log]);
 
   useEffect(() => {
+    const coinCue = state.lastCoinCue;
+    if (!coinCue) return;
+
+    setBattleCue({
+      kind: 'coin',
+      title: `Münzwurf: ${coinCue.result}`,
+      text: `${coinCue.label}: ${coinCue.result}`,
+      nonce: coinCue.nonce,
+    });
+
+    const timer = window.setTimeout(() => setBattleCue(null), 3400);
+    return () => window.clearTimeout(timer);
+  }, [state.lastCoinCue?.nonce]);
+
+  useEffect(() => {
     const pending = state.pendingKo;
     if (!pending) return;
 
@@ -364,7 +404,7 @@ export default function App() {
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
-          <p>Lokales 2-Spieler-Duell · v0.6 Ereignis-Aufladung</p>
+          <p>Lokales 2-Spieler-Duell · v0.8 Fachwahl & Münzwurf</p>
         </div>
         <div className="hero-actions">
           <button onClick={startNewGame}>Neues Spiel</button>

@@ -99,15 +99,28 @@ export type ArbeitAbwaelzenPendingChoice = {
   helperUids: string[];
 };
 
-export type PendingChoice = KopierflutPendingChoice | ArbeitAbwaelzenPendingChoice;
+export type FachkonferenzPendingChoice = {
+  kind: 'FACHKONFERENZ';
+  chooser: Owner;
+  subjects: string[];
+};
+
+export type PendingChoice = KopierflutPendingChoice | ArbeitAbwaelzenPendingChoice | FachkonferenzPendingChoice;
 
 export type KopierflutChoice = 'DAMAGE' | 'SKIP';
 export type ArbeitAbwaelzenChoice = { kind: 'HELPER'; helperUid: string };
-export type PendingChoiceResolution = KopierflutChoice | ArbeitAbwaelzenChoice;
+export type FachkonferenzChoice = { kind: 'SUBJECT'; subject: string };
+export type PendingChoiceResolution = KopierflutChoice | ArbeitAbwaelzenChoice | FachkonferenzChoice;
 
 export type PendingKo = {
   owner: Owner;
   uid: string;
+};
+
+export type CoinCue = {
+  result: Coin;
+  label: string;
+  nonce: number;
 };
 
 export type GameState = {
@@ -124,6 +137,7 @@ export type GameState = {
   pendingChoice?: PendingChoice;
   pendingKo?: PendingKo;
   lastEventId?: EventId;
+  lastCoinCue?: CoinCue;
   eventRevealNonce: number;
 };
 

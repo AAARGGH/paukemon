@@ -1977,3 +1977,95 @@ button:disabled {
   .current-turn .player-header::after { display: none; }
   .turn-badge { padding-right: 0; }
 }
+
+/* v0.8 Fachkonferenz-Auswahl & zuverlässiger Münzwurf */
+.battle-cue {
+  z-index: 120;
+  pointer-events: none;
+}
+
+.battle-cue-coin {
+  z-index: 140;
+  top: 38%;
+}
+
+.battle-cue-coin .battle-cue-card {
+  border-color: rgba(255, 241, 166, 0.95);
+  box-shadow:
+    0 42px 140px rgba(0,0,0,0.72),
+    0 0 85px rgba(242, 201, 76, 0.48);
+}
+
+.coin-flight {
+  filter: drop-shadow(0 26px 38px rgba(0,0,0,0.58));
+}
+
+.choice-backdrop-fachkonferenz {
+  background:
+    radial-gradient(circle at center, rgba(242, 201, 76, 0.16), transparent 34rem),
+    rgba(4, 2, 10, 0.72);
+}
+
+.fachkonferenz-dialog {
+  overflow: visible;
+}
+
+.fachkonferenz-dialog::before {
+  content: "📋";
+  position: absolute;
+  top: -2.2rem;
+  left: 50%;
+  transform: translateX(-50%) rotate(-5deg);
+  display: grid;
+  place-items: center;
+  width: 4.3rem;
+  height: 4.3rem;
+  border-radius: 50%;
+  background: #f2c94c;
+  box-shadow: 0 18px 45px rgba(0,0,0,0.35), 0 0 40px rgba(242, 201, 76, 0.48);
+  font-size: 2rem;
+}
+
+.subject-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.subject-choice-button {
+  min-height: 3.7rem;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 247, 211, 0.98), rgba(242, 201, 76, 0.98));
+  color: #20122f;
+  font-size: 1.05rem;
+  font-weight: 1000;
+  letter-spacing: 0.02em;
+  transform: translateY(0) scale(1);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.subject-choice-button:hover,
+.subject-choice-button:focus-visible {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 18px 42px rgba(242, 201, 76, 0.38);
+  filter: brightness(1.08);
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .subject-choice-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 0.45rem;
+  }
+
+  .subject-choice-button {
+    min-height: 2.7rem;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.85rem;
+  }
+
+  .battle-cue-coin {
+    top: 34%;
+  }
+}
