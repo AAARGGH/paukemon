@@ -1,4 +1,5 @@
 import type { EventCard, PaukemonCard } from '../game/types';
+const cardImage = (fileName: string) => `${import.meta.env.BASE_URL}cards/${fileName}`;
 
 export const paukemonCards: PaukemonCard[] = [
   {
@@ -9,7 +10,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Monster-Paukémon',
     subjects: ['Englisch', 'Chemie'],
     gender: 'female',
-    image: '/cards/amoebia.jpg',
+    image: cardImage('amoebia.jpg'),
     attacks: [
       {
         id: 'ABSORPTION',
@@ -28,7 +29,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Wissens-Paukémon',
     subjects: ['Geschichte', 'Deutsch', 'Ethik'],
     gender: 'female',
-    image: '/cards/copymon.jpg',
+    image: cardImage('copymon.jpg'),
     attacks: [
       {
         id: 'KOPIERFLUT',
@@ -52,7 +53,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Glaubens-Paukémon',
     subjects: ['Kunst'],
     gender: 'male',
-    image: '/cards/esoteriko.jpg',
+    image: cardImage('esoteriko.jpg'),
     attacks: [
       {
         id: 'MEDITATIVER_PSYCHOENERGIESTOSS',
@@ -81,7 +82,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Monster-Paukémon',
     subjects: ['Erdkunde', 'Sozi', 'Geschichte'],
     gender: 'male',
-    image: '/cards/faulon.jpg',
+    image: cardImage('faulon.jpg'),
     attacks: [
       {
         id: 'STINKENDE_FAULHEIT',
@@ -105,7 +106,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Monster-Paukémon',
     subjects: ['Mathe', 'Physik'],
     gender: 'male',
-    image: '/cards/galaktor.jpg',
+    image: cardImage('galaktor.jpg'),
     attacks: [
       {
         id: 'KETTENSAEGE',
@@ -129,7 +130,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'alt-68er-Paukémon',
     subjects: ['Deutsch', 'Geschichte'],
     gender: 'male',
-    image: '/cards/germon.jpg',
+    image: cardImage('germon.jpg'),
     attacks: [
       {
         id: 'BOMBE_LEGEN',
@@ -153,7 +154,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Spuck-Paukémon',
     subjects: ['Mathe', 'Physik'],
     gender: 'male',
-    image: '/cards/karl-heinthi.jpg',
+    image: cardImage('karl-heinthi.jpg'),
     attacks: [
       {
         id: 'ARBEIT_ABWAELZEN',
@@ -183,7 +184,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Unions-Paukémon',
     subjects: ['Sozi', 'Geschichte'],
     gender: 'male',
-    image: '/cards/kommunischdefresser.jpg',
+    image: cardImage('kommunischdefresser.jpg'),
     attacks: [
       {
         id: 'GROSSDEUTSCHLAENDER_WUERSTCHENBESCHUSS',
@@ -208,7 +209,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Wissens-Paukémon',
     subjects: ['Deutsch', 'Geschichte', 'Ethik'],
     gender: 'male',
-    image: '/cards/konfurzius.jpg',
+    image: cardImage('konfurzius.jpg'),
     attacks: [
       {
         id: 'SELTSAME_WEISHEITEN',
@@ -238,7 +239,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Feuerwehr-Paukémon',
     subjects: ['Geschichte', 'Religion'],
     gender: 'male',
-    image: '/cards/murus-parvus.jpg',
+    image: cardImage('murus-parvus.jpg'),
     attacks: [
       {
         id: 'ZWERGENAUFSTAND',
@@ -263,7 +264,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Nasen-Paukémon',
     subjects: ['Deutsch', 'Französisch'],
     gender: 'male',
-    image: '/cards/nasenmann.jpg',
+    image: cardImage('nasenmann.jpg'),
     attacks: [
       {
         id: 'NASENATTACKE',
@@ -292,7 +293,7 @@ export const paukemonCards: PaukemonCard[] = [
     kind: 'Wissens-Paukémon',
     subjects: ['Englisch', 'Sport'],
     gender: 'male',
-    image: '/cards/platton.jpg',
+    image: cardImage('platton.jpg'),
     attacks: [
       {
         id: 'PHASER_AUF_BETAEUBUNG',
@@ -315,25 +316,25 @@ export const eventCards: EventCard[] = [
   {
     id: 'ZWIEBELSUPPE',
     name: 'Cafeteria – Zwiebelsuppe',
-    image: '/cards/cafeteria-zwiebelsuppe.jpg',
+    image: cardImage('cafeteria-zwiebelsuppe.jpg'),
     text: 'Alle Paukémon im Spiel bekommen 10 LP abgezogen.',
   },
   {
     id: 'BEFOERDERUNG',
     name: 'Direktion – Beförderung',
-    image: '/cards/direktion-befoerderung.jpg',
+    image: cardImage('direktion-befoerderung.jpg'),
     text: 'Ein Paukémon deiner Wahl darf in dieser Runde 2 Attacken/Fähigkeiten ausführen.',
   },
   {
     id: 'FACHKONFERENZ',
     name: 'Direktion – Fachkonferenz',
-    image: '/cards/direktion-fachkonferenz.jpg',
+    image: cardImage('direktion-fachkonferenz.jpg'),
     text: 'Wähle ein Fach. Alle Paukémon, die dieses Fach unterrichten, setzen 3 Runden aus.',
   },
   {
     id: 'ROHRBRUCH',
     name: 'Hausmeister – Rohrbruch',
-    image: '/cards/hausmeister-rohrbruch.jpg',
+    image: cardImage('hausmeister-rohrbruch.jpg'),
     text: 'Alle Paukémon mit naturwissenschaftlichem Fach setzen 1 Runde aus und bekommen 10 LP Schaden.',
   },
 ];
