@@ -1104,3 +1104,471 @@ button:disabled {
     scroll-behavior: auto !important;
   }
 }
+
+/* v0.5 Mobile / Landscape Layout
+   Ziel: Spieler 1 bleibt links, Log bleibt mittig, Spieler 2 bleibt rechts. */
+.rotate-device-overlay {
+  display: none;
+}
+
+/* Diese Regeln überschreiben das alte Stack-Verhalten unter 1100px. */
+@media (max-width: 1100px) {
+  html,
+  body {
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .app-shell {
+    width: 100%;
+    min-width: 760px;
+    padding: 0.75rem;
+  }
+
+  .hero {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 0.65rem;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+  }
+
+  .hero p {
+    font-size: 0.9rem;
+  }
+
+  .score-row {
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .score-row > div {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.88rem;
+  }
+
+  .game-layout {
+    grid-template-columns: minmax(220px, 1fr) minmax(250px, 0.78fr) minmax(220px, 1fr);
+    gap: 0.6rem;
+    align-items: start;
+  }
+
+  .center-column {
+    order: 0;
+    position: sticky;
+    top: 0.5rem;
+  }
+
+  .player-column {
+    padding: 0.45rem;
+    gap: 0.55rem;
+    border-radius: 1.05rem;
+  }
+
+  .active-panel,
+  .team-panel,
+  .turn-panel,
+  .log-panel {
+    padding: 0.65rem;
+    border-radius: 1rem;
+  }
+
+  .player-header {
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.8rem;
+  }
+
+  .player-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .player-header span {
+    font-size: 0.82rem;
+  }
+
+  .active-info h4 {
+    margin-top: 0.55rem;
+    font-size: 1.15rem;
+  }
+
+  .active-info p,
+  .turn-panel p,
+  .hint {
+    font-size: 0.82rem;
+  }
+
+  .attack-list {
+    gap: 0.45rem;
+    margin-top: 0.65rem;
+  }
+
+  .attack-list button {
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .reaction-box {
+    margin-top: 0.65rem;
+    padding: 0.55rem;
+    font-size: 0.74rem;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .card-tile {
+    padding: 0.25rem;
+    gap: 0.25rem;
+    border-radius: 0.55rem;
+  }
+
+  .card-tile-meta {
+    gap: 0.12rem;
+    font-size: 0.64rem;
+  }
+
+  .lp-status:not(.compact) .lpbar {
+    height: 0.55rem;
+  }
+
+  .lp-status:not(.compact) .lp-readout strong {
+    font-size: 1.05rem;
+  }
+
+  .log-panel ol {
+    max-height: 56vh;
+    padding-left: 1rem;
+    font-size: 0.78rem;
+  }
+
+  .event-pop {
+    width: min(210px, 42vw);
+  }
+
+  .event-pop img {
+    max-height: 170px;
+  }
+}
+
+/* Smartphones im Querformat: bewusst kompakt, aber weiterhin 3 Spalten. */
+@media (max-width: 900px) and (orientation: landscape) {
+  .app-shell {
+    width: 100%;
+    min-width: 0;
+    padding: 0.35rem;
+  }
+
+  .hero {
+    margin-bottom: 0.35rem;
+    padding: 0.42rem 0.55rem;
+    border-radius: 0.8rem;
+  }
+
+  .hero h1 {
+    font-size: 1.7rem;
+    text-shadow: 2px 2px 0 #33359a;
+  }
+
+  .hero p {
+    display: none;
+  }
+
+  .hero-actions button {
+    padding: 0.45rem 0.6rem;
+    border-radius: 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .winner {
+    margin-bottom: 0.35rem;
+    padding: 0.45rem;
+    border-radius: 0.65rem;
+  }
+
+  .score-row {
+    gap: 0.3rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .score-row > div {
+    padding: 0.35rem 0.45rem;
+    border-radius: 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  .game-layout {
+    grid-template-columns: minmax(178px, 1.05fr) minmax(210px, 0.82fr) minmax(178px, 1.05fr);
+    gap: 0.35rem;
+  }
+
+  .center-column {
+    gap: 0.35rem;
+    top: 0.35rem;
+  }
+
+  .player-column {
+    padding: 0.25rem;
+    gap: 0.35rem;
+    border-radius: 0.75rem;
+  }
+
+  .player-column.current-turn {
+    box-shadow: 0 0 0 3px rgba(242, 201, 76, 0.15), 0 10px 30px rgba(242, 201, 76, 0.12);
+  }
+
+  .player-header {
+    padding: 0.34rem 0.45rem;
+    border-radius: 0.55rem;
+  }
+
+  .player-header h2 {
+    font-size: 0.82rem;
+  }
+
+  .player-header span {
+    font-size: 0.66rem;
+  }
+
+  .active-panel,
+  .team-panel,
+  .turn-panel,
+  .log-panel {
+    padding: 0.4rem;
+    border-radius: 0.7rem;
+  }
+
+  .active-panel h3,
+  .team-panel h3,
+  .turn-panel h2,
+  .log-panel h2 {
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+  }
+
+  .portrait-shell {
+    width: min(100%, 132px);
+    border-radius: 0.55rem;
+  }
+
+  .active-info h4 {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  .active-info p,
+  .turn-panel p,
+  .hint,
+  .status-warning,
+  .status-info {
+    margin: 0.1rem 0;
+    font-size: 0.66rem;
+    line-height: 1.22;
+  }
+
+  .lp-status {
+    margin: 0.25rem 0;
+    gap: 0.18rem;
+  }
+
+  .lp-readout span {
+    font-size: 0.58rem;
+  }
+
+  .lp-status:not(.compact) .lp-readout strong {
+    font-size: 0.82rem;
+  }
+
+  .lp-status:not(.compact) .lpbar,
+  .lpbar {
+    height: 0.34rem;
+  }
+
+  .attack-list {
+    gap: 0.26rem;
+    margin-top: 0.35rem;
+  }
+
+  .attack-list button {
+    padding: 0.32rem 0.38rem;
+    border-radius: 0.48rem;
+    font-size: 0.62rem;
+    line-height: 1.16;
+  }
+
+  .attack-list span {
+    line-height: 1.16;
+  }
+
+  .reaction-box {
+    gap: 0.15rem;
+    margin-top: 0.35rem;
+    padding: 0.35rem;
+    border-radius: 0.5rem;
+    font-size: 0.58rem;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.22rem;
+  }
+
+  .card-tile {
+    padding: 0.16rem;
+    border-width: 1px;
+    border-radius: 0.42rem;
+  }
+
+  .card-tile .portrait-img {
+    border-radius: 0.32rem;
+  }
+
+  .card-tile-meta {
+    font-size: 0.52rem;
+    line-height: 1.08;
+  }
+
+  .card-tile-meta strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .badge {
+    padding: 0.06rem 0.18rem;
+  }
+
+  .turn-panel button {
+    margin: 0.35rem 0;
+    padding: 0.42rem 0.5rem;
+    border-radius: 0.55rem;
+    font-size: 0.68rem;
+  }
+
+  .log-panel ol {
+    max-height: calc(100vh - 9.2rem);
+    gap: 0.18rem;
+    padding-left: 0.75rem;
+    font-size: 0.58rem;
+    line-height: 1.18;
+  }
+
+  .log-panel li {
+    padding: 0.06rem 0.18rem;
+  }
+
+  .battle-cue {
+    top: 50%;
+    width: min(360px, calc(100vw - 1rem));
+  }
+
+  .battle-cue-card {
+    padding: 0.45rem 0.65rem;
+    border-radius: 0.65rem;
+  }
+
+  .battle-cue-card strong {
+    font-size: 0.82rem;
+  }
+
+  .battle-cue-card span {
+    font-size: 0.62rem;
+  }
+
+  .event-pop {
+    width: min(180px, 34vw);
+    padding: 0.45rem;
+    border-radius: 0.7rem;
+  }
+
+  .event-pop img {
+    max-height: 116px;
+  }
+
+  .event-pop span {
+    font-size: 0.62rem;
+  }
+
+  @keyframes eventPop {
+    0% { opacity: 0; transform: translate(-50%, 0.2rem) scale(0.2) rotate(-5deg); }
+    14% { opacity: 1; transform: translate(-50%, -6.1rem) scale(1.04) rotate(1deg); }
+    72% { opacity: 1; transform: translate(-50%, -6.1rem) scale(1) rotate(0); }
+    100% { opacity: 0; transform: translate(-50%, 0.2rem) scale(0.22) rotate(5deg); }
+  }
+}
+
+/* Hochkant auf kleinen Geräten: nicht versuchen alles zu stapeln, sondern zum Drehen auffordern. */
+@media (max-width: 900px) and (orientation: portrait) {
+  body {
+    overflow: hidden;
+  }
+
+  .app-shell {
+    min-width: 760px;
+    filter: blur(2px) brightness(0.55);
+    pointer-events: none;
+  }
+
+  .rotate-device-overlay {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background:
+      radial-gradient(circle at 50% 25%, rgba(242, 201, 76, 0.2), transparent 16rem),
+      rgba(12, 7, 23, 0.86);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+  }
+
+  .rotate-device-card {
+    width: min(360px, 100%);
+    padding: 1.2rem;
+    border: 2px solid #f2c94c;
+    border-radius: 1.2rem;
+    background: #211832;
+    color: #f8f1ff;
+    text-align: center;
+    box-shadow: 0 30px 90px rgba(0,0,0,0.45);
+    animation: dialogDrop 360ms cubic-bezier(.2,.9,.25,1.2) both;
+  }
+
+  .rotate-phone {
+    width: 4.5rem;
+    height: 6.8rem;
+    margin: 0 auto 0.9rem;
+    display: grid;
+    place-items: center;
+    border: 0.45rem solid #f2c94c;
+    border-radius: 1rem;
+    color: #f2c94c;
+    font-size: 2.2rem;
+    font-weight: 1000;
+    animation: phoneTurn 1.8s ease-in-out infinite;
+  }
+
+  .rotate-device-card h2 {
+    margin: 0 0 0.5rem;
+    color: #f2c94c;
+    font-size: 1.55rem;
+  }
+
+  .rotate-device-card p {
+    margin: 0;
+    color: #e5d8f6;
+    line-height: 1.4;
+  }
+
+  @keyframes phoneTurn {
+    0%, 100% { transform: rotate(0deg); }
+    45%, 65% { transform: rotate(90deg); }
+  }
+}

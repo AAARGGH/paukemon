@@ -242,6 +242,14 @@ export default function App() {
 
   return (
     <main className={`app-shell ${battleCue ? `cue-${battleCue.kind}` : ''}`}>
+      <div className="rotate-device-overlay" role="status" aria-live="polite">
+        <div className="rotate-device-card">
+          <div className="rotate-phone" aria-hidden="true">↻</div>
+          <h2>Bitte Bildschirm drehen</h2>
+          <p>Für Paukémon ist Querformat gedacht: Spieler 1 links, Kampflog in der Mitte, Spieler 2 rechts.</p>
+        </div>
+      </div>
+
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
