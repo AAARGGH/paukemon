@@ -641,6 +641,6 @@ export function createNewGame(teamSize = 5): GameState {
     turn: 'player',
     actionsLeft: 1,
     eventPlayedThisTurn: false,
-    log: ['Spiel gestartet. Pro Runde ist eine Attacke erlaubt. Sternchen-Fähigkeiten reagieren automatisch.'],
+    log: ['Spiel gestartet. Lokales 2-Spieler-Duell. Pro Runde ist eine Attacke erlaubt. Sternchen-Fähigkeiten reagieren automatisch.'],
   };
 }
