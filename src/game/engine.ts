@@ -395,7 +395,11 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       heal(state, context.attackerOwner, attacker.uid, 20);
       const result = flipCoin(state, `${attackerCard.name} tanzt`);
       log(state, `Tanzen-Münzwurf = ${result}.`);
-      if (result === 'Kopf') addSkip(state, context.targetOwner, target.uid, 1);
+      if (result === 'Kopf') {
+        addSkip(state, context.targetOwner, target.uid, 1);
+      } else {
+        log(state, `Tanzen: Bei Zahl passiert nichts weiter.`);
+      }
       break;
     }
 

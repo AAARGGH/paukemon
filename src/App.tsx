@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import './style.css';
 import { eventCards } from './data/cards';
@@ -54,9 +54,46 @@ function classifyLog(entry: string): Pick<BattleCue, 'kind' | 'title' | 'text'> 
   if (entry.includes('verliert')) return { kind: 'damage', title: 'Treffer!', text: entry };
   if (entry.includes('erhält') || entry.includes('geheilt')) return { kind: 'heal', title: 'Heilung!', text: entry };
   if (entry.includes('Ereigniskarte')) return { kind: 'event', title: 'Ereignis!', text: entry };
+  if (entry.includes('passiert nichts')) return { kind: 'status', title: 'Nichts passiert!', text: entry };
   if (entry.includes('muss') && entry.includes('aussetzen')) return { kind: 'status', title: 'Status!', text: entry };
   if (entry.includes('wechselt') || entry.includes('eingewechselt')) return { kind: 'switch', title: 'Wechsel!', text: entry };
   return undefined;
+}
+
+function cueDuration(cue: BattleCue): number {
+  switch (cue.kind) {
+    case 'coin':
+      return 3400;
+    case 'attack':
+      return 1900;
+    case 'ko':
+      return 2800;
+    case 'reaction':
+      return 2600;
+    default:
+      return 2300;
+  }
+}
+
+function newLogEntries(current: string[], previous: string[]): string[] {
+  if (previous.length === 0) return current;
+
+  for (let start = 0; start <= current.length; start += 1) {
+    const overlap = Math.min(previous.length, current.length - start);
+    if (overlap <= 0) continue;
+
+    let matches = true;
+    for (let index = 0; index < overlap; index += 1) {
+      if (current[start + index] !== previous[index]) {
+        matches = false;
+        break;
+      }
+    }
+
+    if (matches) return current.slice(0, start);
+  }
+
+  return current.length > previous.length ? current.slice(0, current.length - previous.length) : [];
 }
 
 
@@ -316,7 +353,14 @@ export default function App() {
   const [dealNonce, setDealNonce] = useState(1);
   const [attackFlash, setAttackFlash] = useState<AttackFlash | null>(null);
   const [battleCue, setBattleCue] = useState<BattleCue | null>(null);
+  const [battleCueQueue, setBattleCueQueue] = useState<BattleCue[]>([]);
+  const previousLogRef = useRef<string[]>(state.log);
 
+  const queueBattleCue = (cue: BattleCue | BattleCue[]) => {
+    const cues = Array.isArray(cue) ? cue : [cue];
+    if (cues.length === 0) return;
+    setBattleCueQueue((current) => [...current, ...cues]);
+  };
 
   const active = getActive(state, state.turn);
   const activeEventCharge = state.eventCharge?.[state.turn] ?? 0;
@@ -324,34 +368,41 @@ export default function App() {
   const revealedEvent = state.lastEventId ? eventCards.find((event) => event.id === state.lastEventId) : undefined;
 
   useEffect(() => {
-    const entry = state.log[0] ?? '';
-    const classified = classifyLog(entry);
-    if (!classified) return;
+    const additions = newLogEntries(state.log, previousLogRef.current);
+    previousLogRef.current = state.log;
+    if (additions.length === 0) return;
 
-    const cue: BattleCue = {
-      ...classified,
-      nonce: Date.now(),
-    };
+    const now = Date.now();
+    const cues = additions
+      .slice()
+      .reverse()
+      .map((entry, index) => {
+        const classified = classifyLog(entry);
+        if (!classified) return undefined;
+        return {
+          ...classified,
+          nonce: now + index,
+        } satisfies BattleCue;
+      })
+      .filter((cue): cue is BattleCue => Boolean(cue));
 
-    setBattleCue(cue);
-    const timer = window.setTimeout(() => setBattleCue(null), classified.kind === 'coin' ? 2900 : 2400);
-    return () => window.clearTimeout(timer);
+    if (cues.length > 0) queueBattleCue(cues);
   }, [state.log]);
 
   useEffect(() => {
-    const coinCue = state.lastCoinCue;
-    if (!coinCue) return;
+    if (battleCue || battleCueQueue.length === 0) return;
 
-    setBattleCue({
-      kind: 'coin',
-      title: `Münzwurf: ${coinCue.result}`,
-      text: `${coinCue.label}: ${coinCue.result}`,
-      nonce: coinCue.nonce,
-    });
+    const [nextCue, ...remainingCues] = battleCueQueue;
+    setBattleCue(nextCue);
+    setBattleCueQueue(remainingCues);
+  }, [battleCue, battleCueQueue]);
 
-    const timer = window.setTimeout(() => setBattleCue(null), 3400);
+  useEffect(() => {
+    if (!battleCue) return;
+
+    const timer = window.setTimeout(() => setBattleCue(null), cueDuration(battleCue));
     return () => window.clearTimeout(timer);
-  }, [state.lastCoinCue?.nonce]);
+  }, [battleCue]);
 
   useEffect(() => {
     const pending = state.pendingKo;
@@ -360,7 +411,7 @@ export default function App() {
     const instance = findInstance(state, pending.owner, pending.uid);
     const cardName = instance ? getCard(instance).name : 'Paukémon';
     const nonce = Date.now();
-    setBattleCue({
+    queueBattleCue({
       kind: 'ko',
       title: 'K.O.!',
       text: `${cardName} wird aus dem Spiel genommen.`,
@@ -376,15 +427,18 @@ export default function App() {
   }, [state.pendingKo?.owner, state.pendingKo?.uid]);
 
   const startNewGame = () => {
-    setBattleCue({ kind: 'event', title: 'Austeilen!', text: 'Die Paukémon-Karten werden neu gemischt.', nonce: Date.now() });
+    const nextGame = createNewGame(5);
+    previousLogRef.current = nextGame.log;
+    setBattleCue(null);
+    setBattleCueQueue([{ kind: 'event', title: 'Austeilen!', text: 'Die Paukémon-Karten werden neu gemischt.', nonce: Date.now() }]);
     setDealNonce((current) => current + 1);
-    setState(createNewGame(5));
+    setState(nextGame);
   };
 
   const handleAttack = (owner: Owner, attackId: AttackId, attackName: string) => {
     const nonce = Date.now();
     setAttackFlash({ owner, attackId, nonce });
-    setBattleCue({ kind: 'attack', title: 'Attacke!', text: `${ownerLabel(owner)} nutzt ${attackName}.`, owner, nonce });
+    queueBattleCue({ kind: 'attack', title: 'Attacke!', text: `${ownerLabel(owner)} nutzt ${attackName}.`, owner, nonce });
     window.setTimeout(() => setAttackFlash((current) => (current?.nonce === nonce ? null : current)), 900);
     setState((current) => executeAttack(current, attackId));
   };
