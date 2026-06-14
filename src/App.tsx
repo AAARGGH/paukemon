@@ -44,6 +44,8 @@ type BattleCue = {
   owner?: Owner;
 };
 
+const EVENT_REVEAL_DURATION_MS = 6000;
+
 function classifyLog(entry: string): Pick<BattleCue, 'kind' | 'title' | 'text'> | undefined {
   if (!entry) return undefined;
   if (entry.includes('Münzwurf')) return { kind: 'coin', title: 'Münzwurf', text: entry };
@@ -133,9 +135,10 @@ type PlayerColumnProps = {
   onAttack: (owner: Owner, attackId: AttackId, attackName: string) => void;
   attackFlash?: AttackFlash | null;
   dealNonce: number;
+  uiLocked?: boolean;
 };
 
-function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce }: PlayerColumnProps) {
+function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce, uiLocked = false }: PlayerColumnProps) {
   const isPlayerOne = owner === 'player';
   const team = isPlayerOne ? state.playerTeam : state.enemyTeam;
   const activeUid = isPlayerOne ? state.activePlayerUid : state.activeEnemyUid;
@@ -143,7 +146,7 @@ function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce
   const activeCard = getCard(active);
   const isCurrentTurn = state.turn === owner && !state.winner;
   const pendingKoActive = state.pendingKo?.owner === owner && state.pendingKo.uid === active.uid;
-  const canAct = isCurrentTurn && !state.pendingChoice && !state.pendingKo && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
+  const canAct = isCurrentTurn && !uiLocked && !state.pendingChoice && !state.pendingKo && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
   const activeAttacking = attackFlash?.owner === owner;
   const latestLog = state.log[0] ?? '';
   const reactionHot = latestLog.includes('*') && latestLog.includes(activeCard.name);
@@ -214,7 +217,7 @@ function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce
               instance={instance}
               owner={owner}
               active={instance.uid === activeUid}
-              selectable={isCurrentTurn && !state.pendingChoice && !state.pendingKo && instance.uid !== activeUid && !state.winner}
+              selectable={isCurrentTurn && !uiLocked && !state.pendingChoice && !state.pendingKo && instance.uid !== activeUid && !state.winner}
               onSelect={() => setState((current) => switchActive(current, owner, instance.uid))}
               dealIndex={index + (owner === 'enemy' ? 5 : 0)}
             />
@@ -354,6 +357,7 @@ export default function App() {
   const [attackFlash, setAttackFlash] = useState<AttackFlash | null>(null);
   const [battleCue, setBattleCue] = useState<BattleCue | null>(null);
   const [battleCueQueue, setBattleCueQueue] = useState<BattleCue[]>([]);
+  const [eventRevealActive, setEventRevealActive] = useState(false);
   const previousLogRef = useRef<string[]>(state.log);
 
   const queueBattleCue = (cue: BattleCue | BattleCue[]) => {
@@ -364,7 +368,7 @@ export default function App() {
 
   const active = getActive(state, state.turn);
   const activeEventCharge = state.eventCharge?.[state.turn] ?? 0;
-  const activeCanUseEvent = !state.winner && !state.pendingChoice && !state.pendingKo && active.skipTurns === 0 && !state.eventPlayedThisTurn && activeEventCharge >= EVENT_CHARGE_MAX;
+  const activeCanUseEvent = !eventRevealActive && !state.winner && !state.pendingChoice && !state.pendingKo && active.skipTurns === 0 && !state.eventPlayedThisTurn && activeEventCharge >= EVENT_CHARGE_MAX;
   const revealedEvent = state.lastEventId ? eventCards.find((event) => event.id === state.lastEventId) : undefined;
 
   useEffect(() => {
@@ -390,12 +394,12 @@ export default function App() {
   }, [state.log]);
 
   useEffect(() => {
-    if (battleCue || battleCueQueue.length === 0) return;
+    if (eventRevealActive || state.pendingChoice || battleCue || battleCueQueue.length === 0) return;
 
     const [nextCue, ...remainingCues] = battleCueQueue;
     setBattleCue(nextCue);
     setBattleCueQueue(remainingCues);
-  }, [battleCue, battleCueQueue]);
+  }, [battleCue, battleCueQueue, eventRevealActive, state.pendingChoice]);
 
   useEffect(() => {
     if (!battleCue) return;
@@ -403,6 +407,15 @@ export default function App() {
     const timer = window.setTimeout(() => setBattleCue(null), cueDuration(battleCue));
     return () => window.clearTimeout(timer);
   }, [battleCue]);
+
+  useEffect(() => {
+    if (!state.eventRevealNonce || !revealedEvent) return;
+
+    setBattleCue(null);
+    setEventRevealActive(true);
+    const timer = window.setTimeout(() => setEventRevealActive(false), EVENT_REVEAL_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [state.eventRevealNonce, revealedEvent?.id]);
 
   useEffect(() => {
     const pending = state.pendingKo;
@@ -430,6 +443,7 @@ export default function App() {
     const nextGame = createNewGame(5);
     previousLogRef.current = nextGame.log;
     setBattleCue(null);
+    setEventRevealActive(false);
     setBattleCueQueue([{ kind: 'event', title: 'Austeilen!', text: 'Die Paukémon-Karten werden neu gemischt.', nonce: Date.now() }]);
     setDealNonce((current) => current + 1);
     setState(nextGame);
@@ -444,7 +458,7 @@ export default function App() {
   };
 
   return (
-    <main className={`app-shell ${battleCue ? `cue-${battleCue.kind}` : ''} active-${state.turn} ${state.pendingKo ? 'ko-resolution-active' : ''}`}>
+    <main className={`app-shell ${battleCue ? `cue-${battleCue.kind}` : ''} active-${state.turn} ${state.pendingKo ? 'ko-resolution-active' : ''} ${eventRevealActive ? 'event-reveal-active' : ''}`}>
       <div className="rotate-device-overlay" role="status" aria-live="polite">
         <div className="rotate-device-card">
           <div className="rotate-phone" aria-hidden="true">↻</div>
@@ -473,7 +487,7 @@ export default function App() {
       </section>
 
       <section className="game-layout">
-        <PlayerColumn owner="player" state={state} setState={setState} onAttack={handleAttack} attackFlash={attackFlash} dealNonce={dealNonce} />
+        <PlayerColumn owner="player" state={state} setState={setState} onAttack={handleAttack} attackFlash={attackFlash} dealNonce={dealNonce} uiLocked={eventRevealActive} />
 
         <section className="center-column">
           <article className="turn-panel">
@@ -496,8 +510,8 @@ export default function App() {
                 <EventChargeMeter owner="player" charge={state.eventCharge?.player ?? 0} active={state.turn === 'player'} />
                 <EventChargeMeter owner="enemy" charge={state.eventCharge?.enemy ?? 0} active={state.turn === 'enemy'} />
               </div>
-              {revealedEvent && (
-                <div className="event-pop" key={`${revealedEvent.id}-${state.eventRevealNonce}`}>
+              {eventRevealActive && revealedEvent && (
+                <div className="event-pop event-pop-large" key={`${revealedEvent.id}-${state.eventRevealNonce}`}>
                   <img src={revealedEvent.image} alt={revealedEvent.name} />
                   <strong>{revealedEvent.name}</strong>
                   <span>{revealedEvent.text}</span>
@@ -524,11 +538,11 @@ export default function App() {
           </article>
         </section>
 
-        <PlayerColumn owner="enemy" state={state} setState={setState} onAttack={handleAttack} attackFlash={attackFlash} dealNonce={dealNonce} />
+        <PlayerColumn owner="enemy" state={state} setState={setState} onAttack={handleAttack} attackFlash={attackFlash} dealNonce={dealNonce} uiLocked={eventRevealActive} />
       </section>
 
-      <BattleCueView cue={battleCue} />
-      <PendingChoiceDialog state={state} setState={setState} />
+      {!eventRevealActive && !state.pendingChoice && <BattleCueView cue={battleCue} />}
+      {!eventRevealActive && <PendingChoiceDialog state={state} setState={setState} />}
     </main>
   );
 }
