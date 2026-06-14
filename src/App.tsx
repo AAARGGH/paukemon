@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import './style.css';
 import { eventCards } from './data/cards';
@@ -317,8 +317,6 @@ export default function App() {
   const [attackFlash, setAttackFlash] = useState<AttackFlash | null>(null);
   const [battleCue, setBattleCue] = useState<BattleCue | null>(null);
 
-  const livingPlayerCount = useMemo(() => state.playerTeam.filter(isAlive).length, [state.playerTeam]);
-  const livingEnemyCount = useMemo(() => state.enemyTeam.filter(isAlive).length, [state.enemyTeam]);
 
   const active = getActive(state, state.turn);
   const activeEventCharge = state.eventCharge?.[state.turn] ?? 0;
@@ -404,7 +402,7 @@ export default function App() {
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
-          <p>Lokales 2-Spieler-Duell · v0.8 Fachwahl & Münzwurf</p>
+          <p>Lokales 2-Spieler-Duell · v0.9 Optik-Tuning</p>
         </div>
         <div className="hero-actions">
           <button onClick={startNewGame}>Neues Spiel</button>
@@ -418,9 +416,7 @@ export default function App() {
       )}
 
       <section className="score-row">
-        <div>Spieler 1: {livingPlayerCount} Paukémon übrig</div>
         <div className="turn-indicator turn-flash" key={state.turn}>{state.winner ? 'Spiel beendet' : `${ownerLabel(state.turn)} ist am Zug`}</div>
-        <div>Spieler 2: {livingEnemyCount} Paukémon übrig</div>
       </section>
 
       <section className="game-layout">
@@ -435,10 +431,6 @@ export default function App() {
             <p>
               Aktionen übrig: <strong>{state.actionsLeft}</strong>
             </p>
-            <div className="event-charge-board">
-              <EventChargeMeter owner="player" charge={state.eventCharge?.player ?? 0} active={state.turn === 'player'} />
-              <EventChargeMeter owner="enemy" charge={state.eventCharge?.enemy ?? 0} active={state.turn === 'enemy'} />
-            </div>
             <div className="event-slot">
               <button
                 disabled={!activeCanUseEvent}
@@ -447,6 +439,10 @@ export default function App() {
               >
                 {activeCanUseEvent ? 'Ereigniskarte ziehen' : `Ereignis lädt (${eventReadyLabel(activeEventCharge)})`}
               </button>
+              <div className="event-charge-board">
+                <EventChargeMeter owner="player" charge={state.eventCharge?.player ?? 0} active={state.turn === 'player'} />
+                <EventChargeMeter owner="enemy" charge={state.eventCharge?.enemy ?? 0} active={state.turn === 'enemy'} />
+              </div>
               {revealedEvent && (
                 <div className="event-pop" key={`${revealedEvent.id}-${state.eventRevealNonce}`}>
                   <img src={revealedEvent.image} alt={revealedEvent.name} />
