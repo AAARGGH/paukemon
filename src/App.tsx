@@ -15,6 +15,7 @@ import {
   isAlive,
   playRandomEvent,
   resolvePendingChoice,
+  resolvePendingKo,
   switchActive,
 } from './game/engine';
 import type { AttackId, GameState, Owner, PaukemonInstance } from './game/types';
@@ -45,11 +46,11 @@ type BattleCue = {
 
 function classifyLog(entry: string): Pick<BattleCue, 'kind' | 'title' | 'text'> | undefined {
   if (!entry) return undefined;
+  if (entry.includes('Münzwurf')) return { kind: 'coin', title: 'Münzwurf', text: entry };
   if (entry.includes('ist besiegt')) return { kind: 'ko', title: 'K.O.!', text: entry };
-  if (entry.includes('*') || entry.includes('Pauschalisierung') || entry.includes('Weisheit') || entry.includes('entkommt') || entry.includes('wirft die Attacke zurück') || entry.includes('wirkungs­los')) {
+  if (entry.includes('*') || entry.includes('Pauschalisierung') || entry.includes('Weisheit') || entry.includes('entkommt') || entry.includes('wirft die Attacke zurück') || entry.includes('wirkungslos')) {
     return { kind: 'reaction', title: 'Reaktion!', text: entry };
   }
-  if (entry.includes('Münzwurf')) return { kind: 'coin', title: 'Münzwurf', text: entry };
   if (entry.includes('verliert')) return { kind: 'damage', title: 'Treffer!', text: entry };
   if (entry.includes('erhält') || entry.includes('geheilt')) return { kind: 'heal', title: 'Heilung!', text: entry };
   if (entry.includes('Ereigniskarte')) return { kind: 'event', title: 'Ereignis!', text: entry };
@@ -104,19 +105,21 @@ function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce
   const active = getActive(state, owner);
   const activeCard = getCard(active);
   const isCurrentTurn = state.turn === owner && !state.winner;
-  const canAct = isCurrentTurn && !state.pendingChoice && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
+  const pendingKoActive = state.pendingKo?.owner === owner && state.pendingKo.uid === active.uid;
+  const canAct = isCurrentTurn && !state.pendingChoice && !state.pendingKo && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
   const activeAttacking = attackFlash?.owner === owner;
   const latestLog = state.log[0] ?? '';
   const reactionHot = latestLog.includes('*') && latestLog.includes(activeCard.name);
 
   return (
-    <section className={`player-column ${isCurrentTurn ? 'current-turn' : ''} ${activeAttacking ? 'column-attacking' : ''}`}>
+    <section className={`player-column ${isCurrentTurn ? 'current-turn' : ''} ${activeAttacking ? 'column-attacking' : ''} ${pendingKoActive ? 'column-pending-ko' : ''}`}>
       <header className="player-header">
         <h2>{ownerLabel(owner)}</h2>
-        <span>{isCurrentTurn ? 'ist am Zug' : 'wartet'}</span>
+        <span className="turn-badge">{isCurrentTurn ? 'JETZT AM ZUG' : 'wartet'}</span>
       </header>
 
-      <article className={`active-panel ${activeAttacking ? 'attacking' : ''}`} key={`${dealNonce}-${owner}-${active.uid}`}>
+      <article className={`active-panel ${activeAttacking ? 'attacking' : ''} ${pendingKoActive ? 'pending-ko' : ''}`} key={`${dealNonce}-${owner}-${active.uid}`}>
+        {pendingKoActive && <div className="ko-removal-ribbon">wird aus dem Spiel genommen…</div>}
         <h3>Aktives Paukémon</h3>
         <PaukemonPortrait
           image={activeCard.image}
@@ -174,7 +177,7 @@ function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce
               instance={instance}
               owner={owner}
               active={instance.uid === activeUid}
-              selectable={isCurrentTurn && !state.pendingChoice && instance.uid !== activeUid && !state.winner}
+              selectable={isCurrentTurn && !state.pendingChoice && !state.pendingKo && instance.uid !== activeUid && !state.winner}
               onSelect={() => setState((current) => switchActive(current, owner, instance.uid))}
               dealIndex={index + (owner === 'enemy' ? 5 : 0)}
             />
@@ -193,6 +196,45 @@ function PendingChoiceDialog({ state, setState }: { state: GameState; setState: 
   const target = findInstance(state, pending.targetOwner, pending.targetUid);
   const attackerName = attacker ? getCard(attacker).name : 'Copymon';
   const targetName = target ? getCard(target).name : 'das Ziel';
+
+  if (pending.kind === 'ARBEIT_ABWAELZEN') {
+    const helpers = pending.helperUids
+      .map((uid) => findInstance(state, pending.attackerOwner, uid))
+      .filter((instance): instance is PaukemonInstance => {
+        if (!instance) return false;
+        return isAlive(instance);
+      });
+
+    return (
+      <div className="choice-backdrop" role="dialog" aria-modal="true">
+        <section className="choice-dialog choice-dialog-wide">
+          <p className="eyebrow">Auswahl für {ownerLabel(pending.chooser)}</p>
+          <h2>Arbeit abwälzen!</h2>
+          <p>
+            {attackerName} will nicht selbst ran. Wer soll seine Standardattacke gegen {targetName} ausführen?
+          </p>
+          <div className="helper-choice-grid">
+            {helpers.map((helper) => {
+              const card = getCard(helper);
+              const standard = card.attacks.find((attack) => attack.isStandard) ?? card.attacks[0];
+              return (
+                <button
+                  key={helper.uid}
+                  className="helper-choice-card"
+                  onClick={() => setState((current) => resolvePendingChoice(current, { kind: 'HELPER', helperUid: helper.uid }))}
+                >
+                  <img src={card.image} alt={card.name} />
+                  <strong>{card.name}</strong>
+                  <span>{standard.name}</span>
+                  <small>{helper.currentLp}/{card.maxLp} LP · {card.iq} IQ</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="choice-backdrop" role="dialog" aria-modal="true">
@@ -218,8 +260,23 @@ function PendingChoiceDialog({ state, setState }: { state: GameState; setState: 
 function BattleCueView({ cue }: { cue?: BattleCue | null }) {
   if (!cue) return null;
 
+  const coinResult = cue.kind === 'coin'
+    ? cue.text.includes('Kopf')
+      ? 'Kopf'
+      : cue.text.includes('Zahl')
+        ? 'Zahl'
+        : '?'
+    : undefined;
+
   return (
     <div className={`battle-cue battle-cue-${cue.kind} ${cue.owner ? `from-${cue.owner}` : ''}`} key={cue.nonce}>
+      {cue.kind === 'coin' && (
+        <div className={`coin-flight ${coinResult === 'Zahl' ? 'coin-zahl' : 'coin-kopf'}`}>
+          <div className="coin-disc">
+            <span>{coinResult}</span>
+          </div>
+        </div>
+      )}
       <div className="battle-cue-card">
         <span>{cue.title}</span>
         <strong>{cue.text}</strong>
@@ -240,7 +297,7 @@ export default function App() {
 
   const active = getActive(state, state.turn);
   const activeEventCharge = state.eventCharge?.[state.turn] ?? 0;
-  const activeCanUseEvent = !state.winner && !state.pendingChoice && active.skipTurns === 0 && !state.eventPlayedThisTurn && activeEventCharge >= EVENT_CHARGE_MAX;
+  const activeCanUseEvent = !state.winner && !state.pendingChoice && !state.pendingKo && active.skipTurns === 0 && !state.eventPlayedThisTurn && activeEventCharge >= EVENT_CHARGE_MAX;
   const revealedEvent = state.lastEventId ? eventCards.find((event) => event.id === state.lastEventId) : undefined;
 
   useEffect(() => {
@@ -254,9 +311,31 @@ export default function App() {
     };
 
     setBattleCue(cue);
-    const timer = window.setTimeout(() => setBattleCue(null), 1150);
+    const timer = window.setTimeout(() => setBattleCue(null), classified.kind === 'coin' ? 2900 : 2400);
     return () => window.clearTimeout(timer);
   }, [state.log]);
+
+  useEffect(() => {
+    const pending = state.pendingKo;
+    if (!pending) return;
+
+    const instance = findInstance(state, pending.owner, pending.uid);
+    const cardName = instance ? getCard(instance).name : 'Paukémon';
+    const nonce = Date.now();
+    setBattleCue({
+      kind: 'ko',
+      title: 'K.O.!',
+      text: `${cardName} wird aus dem Spiel genommen.`,
+      owner: pending.owner,
+      nonce,
+    });
+
+    const timer = window.setTimeout(() => {
+      setState((current) => resolvePendingKo(current));
+    }, 2100);
+
+    return () => window.clearTimeout(timer);
+  }, [state.pendingKo?.owner, state.pendingKo?.uid]);
 
   const startNewGame = () => {
     setBattleCue({ kind: 'event', title: 'Austeilen!', text: 'Die Paukémon-Karten werden neu gemischt.', nonce: Date.now() });
@@ -268,12 +347,12 @@ export default function App() {
     const nonce = Date.now();
     setAttackFlash({ owner, attackId, nonce });
     setBattleCue({ kind: 'attack', title: 'Attacke!', text: `${ownerLabel(owner)} nutzt ${attackName}.`, owner, nonce });
-    window.setTimeout(() => setAttackFlash((current) => (current?.nonce === nonce ? null : current)), 720);
+    window.setTimeout(() => setAttackFlash((current) => (current?.nonce === nonce ? null : current)), 900);
     setState((current) => executeAttack(current, attackId));
   };
 
   return (
-    <main className={`app-shell ${battleCue ? `cue-${battleCue.kind}` : ''}`}>
+    <main className={`app-shell ${battleCue ? `cue-${battleCue.kind}` : ''} active-${state.turn} ${state.pendingKo ? 'ko-resolution-active' : ''}`}>
       <div className="rotate-device-overlay" role="status" aria-live="polite">
         <div className="rotate-device-card">
           <div className="rotate-phone" aria-hidden="true">↻</div>
@@ -300,7 +379,7 @@ export default function App() {
 
       <section className="score-row">
         <div>Spieler 1: {livingPlayerCount} Paukémon übrig</div>
-        <div className="turn-indicator">{state.winner ? 'Spiel beendet' : `${ownerLabel(state.turn)} ist am Zug`}</div>
+        <div className="turn-indicator turn-flash" key={state.turn}>{state.winner ? 'Spiel beendet' : `${ownerLabel(state.turn)} ist am Zug`}</div>
         <div>Spieler 2: {livingEnemyCount} Paukémon übrig</div>
       </section>
 

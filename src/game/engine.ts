@@ -1,5 +1,15 @@
 import { cardById, eventCards, paukemonCards } from '../data/cards';
-import type { AttackContext, AttackId, Coin, EventId, GameState, KopierflutChoice, Owner, PaukemonCard, PaukemonInstance } from './types';
+import type {
+  AttackContext,
+  AttackId,
+  Coin,
+  EventId,
+  GameState,
+  Owner,
+  PaukemonCard,
+  PaukemonInstance,
+  PendingChoiceResolution,
+} from './types';
 
 const NATURAL_SCIENCES = ['Mathe', 'Physik', 'Chemie'];
 
@@ -72,7 +82,39 @@ function startTurn(state: GameState, owner: Owner): void {
 
 function log(state: GameState, message: string): void {
   state.log.unshift(message);
-  state.log = state.log.slice(0, 80);
+  state.log = state.log.slice(0, 100);
+}
+
+function livingTeam(state: GameState, owner: Owner): PaukemonInstance[] {
+  return getTeam(state, owner).filter(isAlive);
+}
+
+function currentActiveIsDeadOrRemoved(state: GameState, owner: Owner): boolean {
+  const active = getTeam(state, owner).find((item) => item.uid === state[activeUidKey(owner)]);
+  return !active || !isAlive(active);
+}
+
+function setPendingKoIfNeeded(state: GameState): void {
+  if (state.winner || state.pendingChoice || state.pendingKo) return;
+
+  for (const owner of ['player', 'enemy'] as const) {
+    if (!currentActiveIsDeadOrRemoved(state, owner)) continue;
+    const activeUid = state[activeUidKey(owner)];
+    const active = getTeam(state, owner).find((item) => item.uid === activeUid);
+    if (active && livingTeam(state, owner).length > 0) {
+      state.pendingKo = { owner, uid: active.uid };
+      return;
+    }
+  }
+}
+
+function checkWinner(state: GameState): void {
+  const playerAlive = livingTeam(state, 'player').length > 0;
+  const enemyAlive = livingTeam(state, 'enemy').length > 0;
+
+  if (!playerAlive && !enemyAlive) state.winner = 'enemy';
+  else if (!playerAlive) state.winner = 'enemy';
+  else if (!enemyAlive) state.winner = 'player';
 }
 
 function heal(state: GameState, owner: Owner, instanceUid: string, amount: number): void {
@@ -109,10 +151,6 @@ function addSkip(state: GameState, owner: Owner, instanceUid: string, turns: num
   const card = getCard(instance);
   instance.skipTurns += turns;
   log(state, `${card.name} muss ${turns} Runde(n) aussetzen.`);
-}
-
-function livingTeam(state: GameState, owner: Owner): PaukemonInstance[] {
-  return getTeam(state, owner).filter(isAlive);
 }
 
 function chooseMostDamagedOwn(state: GameState, owner: Owner): PaukemonInstance | undefined {
@@ -234,6 +272,15 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
   return false;
 }
 
+function pendingChoiceCandidateHelpers(state: GameState, owner: Owner, attackerUid: string): PaukemonInstance[] {
+  return livingTeam(state, owner).filter((item) => {
+    if (item.uid === attackerUid) return false;
+    const card = getCard(item);
+    const standard = card.attacks.find((attack) => attack.isStandard) ?? card.attacks[0];
+    return Boolean(standard && standard.id !== 'ARBEIT_ABWAELZEN');
+  });
+}
+
 function applyAttackEffect(state: GameState, context: AttackContext): void {
   const attacker = findInstance(state, context.attackerOwner, context.attackerUid);
   const target = findInstance(state, context.targetOwner, context.targetUid);
@@ -262,7 +309,7 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
         attackerUid: attacker.uid,
         targetUid: target.uid,
       };
-      log(state, `${ownerLabel(context.targetOwner)} muss wählen: 20 LP Schaden nehmen oder 1 Runde aussetzen.`);
+      log(state, `${targetCard.name} muss bei Kopierflut wählen: 20 LP Schaden oder 1 Runde aussetzen.`);
       break;
 
     case 'KUCHEN_BACKEN_LASSEN': {
@@ -323,24 +370,22 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       break;
 
     case 'ARBEIT_ABWAELZEN': {
-      const helper = livingTeam(state, context.attackerOwner).find(
-        (item) => item.uid !== attacker.uid && getCard(item).attacks[0]?.id !== 'ARBEIT_ABWAELZEN',
-      );
-      if (!helper) {
+      const helpers = pendingChoiceCandidateHelpers(state, context.attackerOwner, attacker.uid);
+      if (helpers.length === 0) {
         log(state, `${attackerCard.name} findet niemanden, auf den er die Arbeit abwälzen kann.`);
         break;
       }
 
-      const helperCard = getCard(helper);
-      const standard = helperCard.attacks.find((attack) => attack.isStandard) ?? helperCard.attacks[0];
-      log(state, `${attackerCard.name} wälzt die Arbeit auf ${helperCard.name} ab.`);
-      applyAttackEffect(state, {
+      state.pendingChoice = {
+        kind: 'ARBEIT_ABWAELZEN',
+        chooser: context.attackerOwner,
         attackerOwner: context.attackerOwner,
         targetOwner: context.targetOwner,
-        attackerUid: helper.uid,
+        attackerUid: attacker.uid,
         targetUid: target.uid,
-        attackId: standard.id,
-      });
+        helperUids: helpers.map((helper) => helper.uid),
+      };
+      log(state, `${ownerLabel(context.attackerOwner)} muss wählen, wer die Arbeit übernimmt.`);
       break;
     }
 
@@ -442,9 +487,9 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
   }
 }
 
-function ensureActiveAlive(state: GameState, owner: Owner): void {
+function ensureActiveExists(state: GameState, owner: Owner): void {
   const active = getTeam(state, owner).find((item) => item.uid === state[activeUidKey(owner)]);
-  if (active && isAlive(active)) return;
+  if (active) return;
 
   const replacement = livingTeam(state, owner)[0];
   if (replacement) {
@@ -453,25 +498,17 @@ function ensureActiveAlive(state: GameState, owner: Owner): void {
   }
 }
 
-function checkWinner(state: GameState): void {
-  const playerAlive = livingTeam(state, 'player').length > 0;
-  const enemyAlive = livingTeam(state, 'enemy').length > 0;
-
-  if (!playerAlive && !enemyAlive) state.winner = 'enemy';
-  else if (!playerAlive) state.winner = 'enemy';
-  else if (!enemyAlive) state.winner = 'player';
-}
-
 function processForcedSkips(state: GameState): void {
   let safety = 0;
 
-  while (!state.winner && safety < 50) {
+  while (!state.winner && !state.pendingChoice && !state.pendingKo && safety < 50) {
     safety += 1;
 
-    ensureActiveAlive(state, 'player');
-    ensureActiveAlive(state, 'enemy');
+    ensureActiveExists(state, 'player');
+    ensureActiveExists(state, 'enemy');
     checkWinner(state);
-    if (state.winner) return;
+    setPendingKoIfNeeded(state);
+    if (state.winner || state.pendingKo) return;
 
     const active = getActive(state, state.turn);
     if (active.skipTurns <= 0) return;
@@ -484,38 +521,67 @@ function processForcedSkips(state: GameState): void {
   }
 }
 
+function finishAction(state: GameState): void {
+  ensureActiveExists(state, 'player');
+  ensureActiveExists(state, 'enemy');
+  checkWinner(state);
+  if (state.winner || state.pendingChoice) return;
+
+  if (state.actionsLeft > 0) state.actionsLeft -= 1;
+  if (state.actionsLeft <= 0) startTurn(state, opponent(state.turn));
+
+  checkWinner(state);
+  setPendingKoIfNeeded(state);
+  if (!state.winner && !state.pendingKo) processForcedSkips(state);
+}
+
 export function normalizeTurn(state: GameState): GameState {
   const next = cloneState(state);
   processForcedSkips(next);
   return next;
 }
 
-function advanceTurn(state: GameState): void {
-  ensureActiveAlive(state, 'player');
-  ensureActiveAlive(state, 'enemy');
-  checkWinner(state);
-  if (state.winner) return;
+export function resolvePendingKo(state: GameState): GameState {
+  const next = cloneState(state);
+  const pending = next.pendingKo;
+  if (!pending) return next;
 
-  startTurn(state, opponent(state.turn));
+  const replacement = livingTeam(next, pending.owner).find((item) => item.uid !== pending.uid) ?? livingTeam(next, pending.owner)[0];
+  next.pendingKo = undefined;
 
-  processForcedSkips(state);
+  if (replacement) {
+    next[activeUidKey(pending.owner)] = replacement.uid;
+    log(next, `${ownerLabel(pending.owner)} wechselt ${getCard(replacement).name} ein.`);
+  }
+
+  ensureActiveExists(next, 'player');
+  ensureActiveExists(next, 'enemy');
+  checkWinner(next);
+  setPendingKoIfNeeded(next);
+  if (!next.winner && !next.pendingKo) processForcedSkips(next);
+
+  return next;
 }
 
 export function executeAttack(state: GameState, attackId: AttackId): GameState {
   const next = cloneState(state);
-  if (next.winner || next.pendingChoice) return next;
+  if (next.winner || next.pendingChoice || next.pendingKo) return next;
 
-  ensureActiveAlive(next, 'player');
-  ensureActiveAlive(next, 'enemy');
+  ensureActiveExists(next, 'player');
+  ensureActiveExists(next, 'enemy');
   checkWinner(next);
-  if (next.winner) return next;
+  setPendingKoIfNeeded(next);
+  if (next.winner || next.pendingKo) return next;
 
   const attackerOwner = next.turn;
   const targetOwner = opponent(attackerOwner);
   const attacker = getActive(next, attackerOwner);
   const target = getActive(next, targetOwner);
 
-  if (!isAlive(attacker)) return next;
+  if (!isAlive(attacker)) {
+    setPendingKoIfNeeded(next);
+    return next;
+  }
   if (attacker.skipTurns > 0) {
     processForcedSkips(next);
     return next;
@@ -530,62 +596,72 @@ export function executeAttack(state: GameState, attackId: AttackId): GameState {
     attackId,
   });
 
-  ensureActiveAlive(next, 'player');
-  ensureActiveAlive(next, 'enemy');
   checkWinner(next);
+  if (next.winner || next.pendingChoice) return next;
 
-  if (!next.winner && next.pendingChoice) return next;
-
-  if (!next.winner) {
-    next.actionsLeft -= 1;
-    if (next.actionsLeft <= 0) advanceTurn(next);
-    else processForcedSkips(next);
-  }
-
+  finishAction(next);
   return next;
 }
 
-export function resolvePendingChoice(state: GameState, choice: KopierflutChoice): GameState {
+export function resolvePendingChoice(state: GameState, choice: PendingChoiceResolution): GameState {
   const next = cloneState(state);
   const pending = next.pendingChoice;
-  if (!pending || next.winner) return next;
+  if (!pending || next.winner || next.pendingKo) return next;
 
-  const target = findInstance(next, pending.targetOwner, pending.targetUid);
-  if (target && isAlive(target)) {
-    const targetCard = getCard(target);
-    if (choice === 'DAMAGE') {
-      log(next, `${targetCard.name} wählt den Kopierflut-Schaden.`);
-      damage(next, pending.targetOwner, target.uid, 20);
+  next.pendingChoice = undefined;
+
+  if (pending.kind === 'KOPIERFLUT') {
+    if (typeof choice !== 'string') return next;
+    const target = findInstance(next, pending.targetOwner, pending.targetUid);
+    if (target && isAlive(target)) {
+      const targetCard = getCard(target);
+      if (choice === 'DAMAGE') {
+        log(next, `${targetCard.name} wählt den Kopierflut-Schaden.`);
+        damage(next, pending.targetOwner, target.uid, 20);
+      } else {
+        log(next, `${targetCard.name} wählt die Verwirrung.`);
+        addSkip(next, pending.targetOwner, target.uid, 1);
+      }
+    }
+  } else {
+    if (typeof choice === 'string') return next;
+    const helper = findInstance(next, pending.attackerOwner, choice.helperUid);
+    const target = findInstance(next, pending.targetOwner, pending.targetUid);
+    if (!helper || !target || !isAlive(helper)) {
+      log(next, `Die Arbeit konnte nicht abgewälzt werden.`);
+    } else if (!pending.helperUids.includes(helper.uid)) {
+      log(next, `${getCard(helper).name} kann diese Arbeit nicht übernehmen.`);
     } else {
-      log(next, `${targetCard.name} wählt die Verwirrung.`);
-      addSkip(next, pending.targetOwner, target.uid, 1);
+      const helperCard = getCard(helper);
+      const standard = helperCard.attacks.find((attack) => attack.isStandard) ?? helperCard.attacks[0];
+      log(next, `${getCard(findInstance(next, pending.attackerOwner, pending.attackerUid) ?? helper).name} wälzt die Arbeit auf ${helperCard.name} ab.`);
+      applyAttackEffect(next, {
+        attackerOwner: pending.attackerOwner,
+        targetOwner: pending.targetOwner,
+        attackerUid: helper.uid,
+        targetUid: target.uid,
+        attackId: standard.id,
+      });
     }
   }
 
-  next.pendingChoice = undefined;
-  ensureActiveAlive(next, 'player');
-  ensureActiveAlive(next, 'enemy');
   checkWinner(next);
+  if (next.winner || next.pendingChoice) return next;
 
-  if (!next.winner) {
-    next.actionsLeft -= 1;
-    if (next.actionsLeft <= 0) advanceTurn(next);
-    else processForcedSkips(next);
-  }
-
+  finishAction(next);
   return next;
 }
 
 export function switchActive(state: GameState, owner: Owner, instanceUid: string): GameState {
   const next = cloneState(state);
-  if (next.pendingChoice) return next;
+  if (next.pendingChoice || next.pendingKo) return next;
   const candidate = findInstance(next, owner, instanceUid);
   if (!candidate || !isAlive(candidate)) return next;
 
   next[activeUidKey(owner)] = instanceUid;
   log(next, `${ownerLabel(owner)} wechselt ${getCard(candidate).name} ein.`);
 
-  if (owner === next.turn) advanceTurn(next);
+  if (owner === next.turn) finishAction(next);
   else processForcedSkips(next);
 
   return next;
@@ -593,14 +669,15 @@ export function switchActive(state: GameState, owner: Owner, instanceUid: string
 
 export function playRandomEvent(state: GameState): GameState {
   const next = cloneState(state);
-  if (next.winner || next.eventPlayedThisTurn || next.pendingChoice) return next;
+  if (next.winner || next.eventPlayedThisTurn || next.pendingChoice || next.pendingKo) return next;
   if (!next.eventCharge) next.eventCharge = { player: EVENT_CHARGE_MAX, enemy: EVENT_CHARGE_MAX };
   if (next.eventCharge[next.turn] < EVENT_CHARGE_MAX) return next;
 
-  ensureActiveAlive(next, 'player');
-  ensureActiveAlive(next, 'enemy');
+  ensureActiveExists(next, 'player');
+  ensureActiveExists(next, 'enemy');
   checkWinner(next);
-  if (next.winner) return next;
+  setPendingKoIfNeeded(next);
+  if (next.winner || next.pendingKo) return next;
 
   const active = getActive(next, next.turn);
   if (active.skipTurns > 0) {
@@ -652,10 +729,9 @@ export function playRandomEvent(state: GameState): GameState {
       break;
   }
 
-  ensureActiveAlive(next, 'player');
-  ensureActiveAlive(next, 'enemy');
   checkWinner(next);
-  if (!next.winner) processForcedSkips(next);
+  setPendingKoIfNeeded(next);
+  if (!next.winner && !next.pendingKo) processForcedSkips(next);
 
   return next;
 }

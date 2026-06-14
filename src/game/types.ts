@@ -80,7 +80,7 @@ export type PaukemonInstance = {
   removed: boolean;
 };
 
-export type PendingChoice = {
+export type KopierflutPendingChoice = {
   kind: 'KOPIERFLUT';
   chooser: Owner;
   attackerOwner: Owner;
@@ -89,7 +89,26 @@ export type PendingChoice = {
   targetUid: string;
 };
 
+export type ArbeitAbwaelzenPendingChoice = {
+  kind: 'ARBEIT_ABWAELZEN';
+  chooser: Owner;
+  attackerOwner: Owner;
+  targetOwner: Owner;
+  attackerUid: string;
+  targetUid: string;
+  helperUids: string[];
+};
+
+export type PendingChoice = KopierflutPendingChoice | ArbeitAbwaelzenPendingChoice;
+
 export type KopierflutChoice = 'DAMAGE' | 'SKIP';
+export type ArbeitAbwaelzenChoice = { kind: 'HELPER'; helperUid: string };
+export type PendingChoiceResolution = KopierflutChoice | ArbeitAbwaelzenChoice;
+
+export type PendingKo = {
+  owner: Owner;
+  uid: string;
+};
 
 export type GameState = {
   playerTeam: PaukemonInstance[];
@@ -103,6 +122,7 @@ export type GameState = {
   log: string[];
   winner?: Owner;
   pendingChoice?: PendingChoice;
+  pendingKo?: PendingKo;
   lastEventId?: EventId;
   eventRevealNonce: number;
 };
