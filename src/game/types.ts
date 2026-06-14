@@ -99,6 +99,7 @@ export type GameState = {
   turn: Owner;
   actionsLeft: number;
   eventPlayedThisTurn: boolean;
+  eventCharge: Record<Owner, number>;
   log: string[];
   winner?: Owner;
   pendingChoice?: PendingChoice;

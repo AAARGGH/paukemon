@@ -7,6 +7,7 @@ import { LpStatus } from './components/LpStatus';
 import { PaukemonPortrait } from './components/PaukemonPortrait';
 import {
   createNewGame,
+  EVENT_CHARGE_MAX,
   executeAttack,
   getActive,
   getCard,
@@ -55,6 +56,36 @@ function classifyLog(entry: string): Pick<BattleCue, 'kind' | 'title' | 'text'> 
   if (entry.includes('muss') && entry.includes('aussetzen')) return { kind: 'status', title: 'Status!', text: entry };
   if (entry.includes('wechselt') || entry.includes('eingewechselt')) return { kind: 'switch', title: 'Wechsel!', text: entry };
   return undefined;
+}
+
+
+function eventReadyLabel(charge: number): string {
+  return charge >= EVENT_CHARGE_MAX ? 'bereit' : `${charge}/${EVENT_CHARGE_MAX}`;
+}
+
+type EventChargeMeterProps = {
+  owner: Owner;
+  charge: number;
+  active: boolean;
+};
+
+function EventChargeMeter({ owner, charge, active }: EventChargeMeterProps) {
+  const safeCharge = Math.max(0, Math.min(EVENT_CHARGE_MAX, charge ?? 0));
+  const ready = safeCharge >= EVENT_CHARGE_MAX;
+
+  return (
+    <div className={`event-charge-meter ${active ? 'active' : ''} ${ready ? 'ready' : ''}`}>
+      <div className="event-charge-label">
+        <span>{ownerLabel(owner)}</span>
+        <strong>{ready ? 'Ereignis bereit!' : `Ereignis lädt: ${eventReadyLabel(safeCharge)}`}</strong>
+      </div>
+      <div className="event-charge-pips" aria-label={`${ownerLabel(owner)} Ereignis-Aufladung ${safeCharge} von ${EVENT_CHARGE_MAX}`}>
+        {Array.from({ length: EVENT_CHARGE_MAX }).map((_, index) => (
+          <span key={index} className={index < safeCharge ? 'filled' : ''} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 type PlayerColumnProps = {
@@ -208,7 +239,8 @@ export default function App() {
   const livingEnemyCount = useMemo(() => state.enemyTeam.filter(isAlive).length, [state.enemyTeam]);
 
   const active = getActive(state, state.turn);
-  const activeCanUseEvent = !state.winner && !state.pendingChoice && active.skipTurns === 0 && !state.eventPlayedThisTurn;
+  const activeEventCharge = state.eventCharge?.[state.turn] ?? 0;
+  const activeCanUseEvent = !state.winner && !state.pendingChoice && active.skipTurns === 0 && !state.eventPlayedThisTurn && activeEventCharge >= EVENT_CHARGE_MAX;
   const revealedEvent = state.lastEventId ? eventCards.find((event) => event.id === state.lastEventId) : undefined;
 
   useEffect(() => {
@@ -253,7 +285,7 @@ export default function App() {
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
-          <p>Lokales 2-Spieler-Duell · v0.4 Eye-Candy-Update</p>
+          <p>Lokales 2-Spieler-Duell · v0.6 Ereignis-Aufladung</p>
         </div>
         <div className="hero-actions">
           <button onClick={startNewGame}>Neues Spiel</button>
@@ -284,12 +316,17 @@ export default function App() {
             <p>
               Aktionen übrig: <strong>{state.actionsLeft}</strong>
             </p>
+            <div className="event-charge-board">
+              <EventChargeMeter owner="player" charge={state.eventCharge?.player ?? 0} active={state.turn === 'player'} />
+              <EventChargeMeter owner="enemy" charge={state.eventCharge?.enemy ?? 0} active={state.turn === 'enemy'} />
+            </div>
             <div className="event-slot">
               <button
                 disabled={!activeCanUseEvent}
+                title={activeCanUseEvent ? 'Ereigniskarte ziehen' : `Noch nicht bereit: ${eventReadyLabel(activeEventCharge)}`}
                 onClick={() => setState((current) => playRandomEvent(current))}
               >
-                Ereigniskarte ziehen
+                {activeCanUseEvent ? 'Ereigniskarte ziehen' : `Ereignis lädt (${eventReadyLabel(activeEventCharge)})`}
               </button>
               {revealedEvent && (
                 <div className="event-pop" key={`${revealedEvent.id}-${state.eventRevealNonce}`}>
@@ -300,7 +337,7 @@ export default function App() {
               )}
             </div>
             <p className="hint">
-              Pro Runde eine Attacke. Wechseln verbraucht die Aktion. Sternchen-Reaktionen laufen automatisch.
+              Pro Runde eine Attacke. Wechseln verbraucht die Aktion. Ereigniskarten laden für beide Spieler getrennt über 3 eigene Züge.
             </p>
           </article>
 

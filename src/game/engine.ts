@@ -3,6 +3,8 @@ import type { AttackContext, AttackId, Coin, EventId, GameState, KopierflutChoic
 
 const NATURAL_SCIENCES = ['Mathe', 'Physik', 'Chemie'];
 
+export const EVENT_CHARGE_MAX = 3;
+
 function coin(): Coin {
   return Math.random() < 0.5 ? 'Kopf' : 'Zahl';
 }
@@ -54,6 +56,18 @@ function opponent(owner: Owner): Owner {
 
 function ownerLabel(owner: Owner): string {
   return owner === 'player' ? 'Spieler 1' : 'Spieler 2';
+}
+
+function chargeEventForTurnStart(state: GameState, owner: Owner): void {
+  if (!state.eventCharge) state.eventCharge = { player: EVENT_CHARGE_MAX, enemy: EVENT_CHARGE_MAX };
+  state.eventCharge[owner] = Math.min(EVENT_CHARGE_MAX, state.eventCharge[owner] + 1);
+}
+
+function startTurn(state: GameState, owner: Owner): void {
+  state.turn = owner;
+  state.actionsLeft = 1;
+  state.eventPlayedThisTurn = false;
+  chargeEventForTurnStart(state, owner);
 }
 
 function log(state: GameState, message: string): void {
@@ -466,9 +480,7 @@ function processForcedSkips(state: GameState): void {
     active.skipTurns -= 1;
     log(state, `${ownerLabel(state.turn)}: ${card.name} setzt aus. Verbleibend: ${active.skipTurns}.`);
 
-    state.turn = opponent(state.turn);
-    state.actionsLeft = 1;
-    state.eventPlayedThisTurn = false;
+    startTurn(state, opponent(state.turn));
   }
 }
 
@@ -484,9 +496,7 @@ function advanceTurn(state: GameState): void {
   checkWinner(state);
   if (state.winner) return;
 
-  state.turn = opponent(state.turn);
-  state.actionsLeft = 1;
-  state.eventPlayedThisTurn = false;
+  startTurn(state, opponent(state.turn));
 
   processForcedSkips(state);
 }
@@ -584,6 +594,8 @@ export function switchActive(state: GameState, owner: Owner, instanceUid: string
 export function playRandomEvent(state: GameState): GameState {
   const next = cloneState(state);
   if (next.winner || next.eventPlayedThisTurn || next.pendingChoice) return next;
+  if (!next.eventCharge) next.eventCharge = { player: EVENT_CHARGE_MAX, enemy: EVENT_CHARGE_MAX };
+  if (next.eventCharge[next.turn] < EVENT_CHARGE_MAX) return next;
 
   ensureActiveAlive(next, 'player');
   ensureActiveAlive(next, 'enemy');
@@ -597,6 +609,7 @@ export function playRandomEvent(state: GameState): GameState {
   }
 
   next.eventPlayedThisTurn = true;
+  next.eventCharge[next.turn] = 0;
   const event = eventCards[Math.floor(Math.random() * eventCards.length)];
   next.lastEventId = event.id;
   next.eventRevealNonce += 1;
@@ -677,6 +690,7 @@ export function createNewGame(teamSize = 5): GameState {
     turn: 'player',
     actionsLeft: 1,
     eventPlayedThisTurn: false,
+    eventCharge: { player: EVENT_CHARGE_MAX, enemy: EVENT_CHARGE_MAX },
     eventRevealNonce: 0,
     log: ['Spiel gestartet. Lokales 2-Spieler-Duell. Pro Runde ist eine Attacke erlaubt. Sternchen-Fähigkeiten reagieren automatisch.'],
   };

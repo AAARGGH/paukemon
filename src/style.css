@@ -377,6 +377,99 @@ button:disabled {
   color: #d8cae8;
 }
 
+
+.event-charge-board {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0 0.4rem;
+}
+
+.event-charge-meter {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 0.95rem;
+  background: rgba(0,0,0,0.18);
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.event-charge-meter.active {
+  border-color: rgba(242, 201, 76, 0.7);
+  background: rgba(242, 201, 76, 0.12);
+  transform: scale(1.015);
+}
+
+.event-charge-meter.ready {
+  box-shadow: inset 0 0 0 1px rgba(242, 201, 76, 0.35), 0 0 24px rgba(242, 201, 76, 0.12);
+}
+
+.event-charge-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.event-charge-label span {
+  color: #d8cae8;
+  font-weight: 800;
+}
+
+.event-charge-label strong {
+  color: #f8f1ff;
+  text-align: right;
+}
+
+.event-charge-meter.ready .event-charge-label strong {
+  color: #f2c94c;
+}
+
+.event-charge-pips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.event-charge-pips span {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  overflow: hidden;
+  position: relative;
+}
+
+.event-charge-pips span.filled {
+  background: #f2c94c;
+  box-shadow: 0 0 12px rgba(242, 201, 76, 0.55);
+  animation: eventChargeFill 360ms ease;
+}
+
+.event-charge-meter.ready.active .event-charge-pips span.filled {
+  animation: eventReadyPulse 1.3s ease-in-out infinite;
+}
+
+@keyframes eventChargeFill {
+  from {
+    transform: scaleX(0.25);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes eventReadyPulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.4);
+  }
+}
+
 .event-slot {
   position: relative;
   margin: 0.75rem 0;
