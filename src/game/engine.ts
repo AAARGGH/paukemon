@@ -53,7 +53,7 @@ function opponent(owner: Owner): Owner {
 }
 
 function ownerLabel(owner: Owner): string {
-  return owner === 'player' ? 'Du' : 'Computer';
+  return owner === 'player' ? 'Spieler 1' : 'Spieler 2';
 }
 
 function log(state: GameState, message: string): void {
