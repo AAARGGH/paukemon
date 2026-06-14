@@ -36,7 +36,7 @@ button:disabled {
 }
 
 .app-shell {
-  width: min(1440px, 100%);
+  width: min(1600px, 100%);
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -101,20 +101,64 @@ button:disabled {
   font-weight: 800;
 }
 
-.turn-active {
-  background: #33359a !important;
+.turn-indicator {
+  background: #f2c94c !important;
+  color: #20122f;
 }
 
-.battlefield {
+.game-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 0.85fr) minmax(280px, 1fr);
   gap: 1rem;
-  align-items: stretch;
+  align-items: start;
+}
+
+.player-column {
+  display: grid;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 2px solid transparent;
+  border-radius: 1.6rem;
+  background: rgba(255,255,255,0.04);
+}
+
+.player-column.current-turn {
+  border-color: #f2c94c;
+  box-shadow: 0 0 0 4px rgba(242, 201, 76, 0.12), 0 20px 80px rgba(242, 201, 76, 0.12);
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.08);
+}
+
+.player-header h2 {
+  margin: 0;
+  color: #f2c94c;
+}
+
+.player-header span {
+  font-weight: 900;
+  color: #d8cae8;
+}
+
+.current-turn .player-header {
+  background: #33359a;
+}
+
+.current-turn .player-header span {
+  color: #fff;
 }
 
 .active-panel,
-.actions-panel,
-.teams-and-log > article {
+.team-panel,
+.turn-panel,
+.log-panel {
   padding: 1rem;
   border: 1px solid rgba(255,255,255,0.14);
   border-radius: 1.4rem;
@@ -122,9 +166,10 @@ button:disabled {
   box-shadow: 0 20px 60px rgba(0,0,0,0.18);
 }
 
-.active-panel h2,
-.actions-panel h2,
-.teams-and-log h2 {
+.active-panel h3,
+.team-panel h3,
+.turn-panel h2,
+.log-panel h2 {
   margin: 0 0 0.75rem;
   font-size: 1rem;
   color: #f2c94c;
@@ -132,13 +177,13 @@ button:disabled {
 
 .big-card {
   display: block;
-  width: min(100%, 280px);
+  width: min(100%, 300px);
   margin: 0 auto;
   border-radius: 0.75rem;
   box-shadow: 0 14px 30px rgba(0,0,0,0.35);
 }
 
-.active-info h3 {
+.active-info h4 {
   margin: 0.9rem 0 0.25rem;
   font-size: 1.5rem;
 }
@@ -148,14 +193,20 @@ button:disabled {
   color: #d8cae8;
 }
 
-.hint {
-  margin-top: 0;
-  color: #d8cae8;
+.status-warning {
+  color: #ffb3b3 !important;
+  font-weight: 800;
+}
+
+.status-info {
+  color: #bde0ff !important;
+  font-weight: 800;
 }
 
 .attack-list {
   display: grid;
   gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .attack-list button {
@@ -182,17 +233,9 @@ button:disabled {
   font-size: 0.92rem;
 }
 
-.teams-and-log {
-  display: grid;
-  grid-template-columns: 1fr 1fr minmax(280px, 0.85fr);
-  gap: 1rem;
-  margin-top: 1rem;
-  align-items: start;
-}
-
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 0.75rem;
 }
 
@@ -255,10 +298,33 @@ button:disabled {
   background: #77dd77;
 }
 
+.center-column {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.turn-panel p {
+  margin: 0.4rem 0;
+  color: #d8cae8;
+}
+
+.turn-panel button {
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.hint {
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: #d8cae8;
+}
+
 .log-panel ol {
   display: grid;
   gap: 0.4rem;
-  max-height: 620px;
+  max-height: 720px;
   overflow: auto;
   margin: 0;
   padding-left: 1.25rem;
@@ -270,10 +336,14 @@ button:disabled {
   font-weight: 800;
 }
 
-@media (max-width: 960px) {
-  .battlefield,
-  .teams-and-log {
+@media (max-width: 1100px) {
+  .game-layout {
     grid-template-columns: 1fr;
+  }
+
+  .center-column {
+    position: static;
+    order: -1;
   }
 
   .score-row {
