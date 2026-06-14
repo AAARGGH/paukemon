@@ -402,7 +402,6 @@ export default function App() {
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
-          <p>Lokales 2-Spieler-Duell · v0.9 Optik-Tuning</p>
         </div>
         <div className="hero-actions">
           <button onClick={startNewGame}>Neues Spiel</button>
