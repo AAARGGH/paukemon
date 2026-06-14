@@ -1,0 +1,287 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #151126;
+  color: #f8f1ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(250, 210, 71, 0.18), transparent 30rem),
+    radial-gradient(circle at bottom right, rgba(92, 85, 255, 0.16), transparent 30rem),
+    #151126;
+}
+
+button {
+  border: 0;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
+  background: #f2c94c;
+  color: #20122f;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.app-shell {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 1.4rem;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.08em;
+  color: #f2c94c;
+  text-shadow: 4px 4px 0 #33359a;
+}
+
+.hero p {
+  margin: 0.5rem 0 0;
+  color: #d8cae8;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.winner {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #f2c94c;
+  color: #20122f;
+  font-weight: 900;
+  text-align: center;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.score-row > div {
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.08);
+  text-align: center;
+  font-weight: 800;
+}
+
+.turn-active {
+  background: #33359a !important;
+}
+
+.battlefield {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1fr) minmax(220px, 0.85fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.active-panel,
+.actions-panel,
+.teams-and-log > article {
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 1.4rem;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+}
+
+.active-panel h2,
+.actions-panel h2,
+.teams-and-log h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #f2c94c;
+}
+
+.big-card {
+  display: block;
+  width: min(100%, 280px);
+  margin: 0 auto;
+  border-radius: 0.75rem;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+}
+
+.active-info h3 {
+  margin: 0.9rem 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.active-info p {
+  margin: 0.2rem 0;
+  color: #d8cae8;
+}
+
+.hint {
+  margin-top: 0;
+  color: #d8cae8;
+}
+
+.attack-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.attack-list button {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  background: #fff7d3;
+}
+
+.attack-list span {
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.reaction-box {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background: rgba(0,0,0,0.24);
+  color: #f1e8ff;
+  font-size: 0.92rem;
+}
+
+.teams-and-log {
+  display: grid;
+  grid-template-columns: 1fr 1fr minmax(280px, 0.85fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.card-tile {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.45rem;
+  border: 2px solid transparent;
+  background: rgba(255,255,255,0.1);
+  color: #f8f1ff;
+  text-align: left;
+  box-shadow: none;
+}
+
+.card-tile.active {
+  border-color: #f2c94c;
+}
+
+.card-tile.defeated {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.card-tile img {
+  width: 100%;
+  border-radius: 0.45rem;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.card-tile-meta {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.card-tile-meta span {
+  color: #d8cae8;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-flex;
+  width: max-content;
+  padding: 0.15rem 0.35rem;
+  border-radius: 99px;
+  background: #33359a;
+  color: #fff !important;
+}
+
+.lpbar {
+  height: 0.45rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.2);
+}
+
+.lpbar > div {
+  height: 100%;
+  background: #77dd77;
+}
+
+.log-panel ol {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 620px;
+  overflow: auto;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #e8ddf8;
+}
+
+.log-panel li:first-child {
+  color: #fff;
+  font-weight: 800;
+}
+
+@media (max-width: 960px) {
+  .battlefield,
+  .teams-and-log {
+    grid-template-columns: 1fr;
+  }
+
+  .score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
