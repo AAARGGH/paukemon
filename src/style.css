@@ -203,6 +203,85 @@ button:disabled {
   font-weight: 800;
 }
 
+.lp-status {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+
+.lp-status.compact {
+  margin: 0.15rem 0 0;
+  gap: 0.25rem;
+}
+
+.lp-readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-readout span {
+  color: #d8cae8;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.lp-readout strong {
+  display: inline-block;
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.lp-status:not(.compact) .lp-readout strong {
+  font-size: 1.6rem;
+}
+
+.lp-status.compact .lp-readout strong {
+  font-size: 0.82rem;
+}
+
+.lp-change-down .lp-readout strong {
+  color: #ff6b6b;
+  transform: scale(1.22);
+  animation: lpPulseDown 420ms ease;
+}
+
+.lp-change-up .lp-readout strong {
+  color: #77dd77;
+  transform: scale(1.22);
+  animation: lpPulseUp 420ms ease;
+}
+
+.lpbar {
+  height: 0.55rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.2);
+}
+
+.lp-status:not(.compact) .lpbar {
+  height: 0.8rem;
+}
+
+.lpbar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #77dd77, #f2c94c);
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes lpPulseDown {
+  0% { transform: scale(1); text-shadow: none; }
+  45% { transform: scale(1.35); text-shadow: 0 0 24px rgba(255, 107, 107, 0.65); }
+  100% { transform: scale(1.08); }
+}
+
+@keyframes lpPulseUp {
+  0% { transform: scale(1); text-shadow: none; }
+  45% { transform: scale(1.35); text-shadow: 0 0 24px rgba(119, 221, 119, 0.65); }
+  100% { transform: scale(1.08); }
+}
+
 .attack-list {
   display: grid;
   gap: 0.75rem;
@@ -286,18 +365,6 @@ button:disabled {
   color: #fff !important;
 }
 
-.lpbar {
-  height: 0.45rem;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.2);
-}
-
-.lpbar > div {
-  height: 100%;
-  background: #77dd77;
-}
-
 .center-column {
   display: grid;
   gap: 1rem;
@@ -310,9 +377,64 @@ button:disabled {
   color: #d8cae8;
 }
 
-.turn-panel button {
-  width: 100%;
+.event-slot {
+  position: relative;
   margin: 0.75rem 0;
+}
+
+.event-slot > button {
+  width: 100%;
+}
+
+.event-pop {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  top: 0.2rem;
+  width: min(260px, 88vw);
+  transform-origin: center bottom;
+  padding: 0.75rem;
+  border: 2px solid #f2c94c;
+  border-radius: 1.1rem;
+  background: #fff7d3;
+  color: #20122f;
+  box-shadow: 0 26px 70px rgba(0,0,0,0.45);
+  display: grid;
+  gap: 0.45rem;
+  text-align: center;
+  pointer-events: none;
+  animation: eventPop 2.35s ease forwards;
+}
+
+.event-pop img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: 0.65rem;
+}
+
+.event-pop span {
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
+@keyframes eventPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0.4rem) scale(0.2) rotate(-5deg);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -9.5rem) scale(1.04) rotate(1deg);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -9.5rem) scale(1) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0.4rem) scale(0.22) rotate(5deg);
+  }
 }
 
 .hint {
@@ -336,6 +458,53 @@ button:disabled {
   font-weight: 800;
 }
 
+.choice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(10, 6, 19, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.choice-dialog {
+  width: min(560px, 100%);
+  padding: 1.25rem;
+  border: 2px solid #f2c94c;
+  border-radius: 1.4rem;
+  background: #211832;
+  box-shadow: 0 30px 100px rgba(0,0,0,0.5);
+}
+
+.choice-dialog h2 {
+  margin: 0.15rem 0 0.5rem;
+  color: #f2c94c;
+  font-size: 2rem;
+}
+
+.choice-dialog p {
+  color: #efe4ff;
+  line-height: 1.45;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #d8cae8 !important;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 @media (max-width: 1100px) {
   .game-layout {
     grid-template-columns: 1fr;
@@ -353,5 +522,19 @@ button:disabled {
   .hero {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-shell {
+    padding: 0.75rem;
+  }
+
+  .choice-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .event-pop {
+    width: min(230px, 80vw);
   }
 }

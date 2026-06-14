@@ -1,17 +1,34 @@
 import { useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import './style.css';
+import { eventCards } from './data/cards';
 import { CardView } from './components/CardView';
-import { createNewGame, executeAttack, getActive, getCard, isAlive, playRandomEvent, switchActive } from './game/engine';
-import type { Owner } from './game/types';
+import { LpStatus } from './components/LpStatus';
+import {
+  createNewGame,
+  executeAttack,
+  getActive,
+  getCard,
+  getTeam,
+  isAlive,
+  playRandomEvent,
+  resolvePendingChoice,
+  switchActive,
+} from './game/engine';
+import type { GameState, Owner, PaukemonInstance } from './game/types';
 
 function ownerLabel(owner: Owner): string {
   return owner === 'player' ? 'Spieler 1' : 'Spieler 2';
 }
 
+function findInstance(state: GameState, owner: Owner, uid: string): PaukemonInstance | undefined {
+  return getTeam(state, owner).find((instance) => instance.uid === uid);
+}
+
 type PlayerColumnProps = {
   owner: Owner;
-  state: ReturnType<typeof createNewGame>;
-  setState: React.Dispatch<React.SetStateAction<ReturnType<typeof createNewGame>>>;
+  state: GameState;
+  setState: Dispatch<SetStateAction<GameState>>;
 };
 
 function PlayerColumn({ owner, state, setState }: PlayerColumnProps) {
@@ -21,7 +38,7 @@ function PlayerColumn({ owner, state, setState }: PlayerColumnProps) {
   const active = getActive(state, owner);
   const activeCard = getCard(active);
   const isCurrentTurn = state.turn === owner && !state.winner;
-  const canAct = isCurrentTurn && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
+  const canAct = isCurrentTurn && !state.pendingChoice && isAlive(active) && active.skipTurns === 0 && state.actionsLeft > 0;
 
   return (
     <section className={`player-column ${isCurrentTurn ? 'current-turn' : ''}`}>
@@ -36,8 +53,9 @@ function PlayerColumn({ owner, state, setState }: PlayerColumnProps) {
 
         <div className="active-info">
           <h4>{activeCard.name}</h4>
-          <p>{active.currentLp}/{activeCard.maxLp} LP · {activeCard.iq} IQ</p>
-          <p>{activeCard.kind} · {activeCard.subjects.join(' / ')}</p>
+          <LpStatus current={active.currentLp} max={activeCard.maxLp} />
+          <p>{activeCard.iq} IQ · {activeCard.kind}</p>
+          <p>{activeCard.subjects.join(' / ')}</p>
           {active.skipTurns > 0 && <p className="status-warning">Muss noch {active.skipTurns} Runde(n) aussetzen.</p>}
           {active.chargeTurns > 0 && <p className="status-info">Aufladung: {active.chargeTurns}/2</p>}
         </div>
@@ -74,7 +92,7 @@ function PlayerColumn({ owner, state, setState }: PlayerColumnProps) {
               instance={instance}
               owner={owner}
               active={instance.uid === activeUid}
-              selectable={isCurrentTurn && instance.uid !== activeUid && !state.winner}
+              selectable={isCurrentTurn && !state.pendingChoice && instance.uid !== activeUid && !state.winner}
               onSelect={() => setState((current) => switchActive(current, owner, instance.uid))}
             />
           ))}
@@ -84,21 +102,52 @@ function PlayerColumn({ owner, state, setState }: PlayerColumnProps) {
   );
 }
 
+function PendingChoiceDialog({ state, setState }: { state: GameState; setState: Dispatch<SetStateAction<GameState>> }) {
+  const pending = state.pendingChoice;
+  if (!pending) return null;
+
+  const attacker = findInstance(state, pending.attackerOwner, pending.attackerUid);
+  const target = findInstance(state, pending.targetOwner, pending.targetUid);
+  const attackerName = attacker ? getCard(attacker).name : 'Copymon';
+  const targetName = target ? getCard(target).name : 'das Ziel';
+
+  return (
+    <div className="choice-backdrop" role="dialog" aria-modal="true">
+      <section className="choice-dialog">
+        <p className="eyebrow">Rückfrage an {ownerLabel(pending.chooser)}</p>
+        <h2>Kopierflut!</h2>
+        <p>
+          {attackerName} trifft {targetName}. {ownerLabel(pending.chooser)} muss entscheiden:
+        </p>
+        <div className="choice-actions">
+          <button onClick={() => setState((current) => resolvePendingChoice(current, 'DAMAGE'))}>
+            20 LP Schaden nehmen
+          </button>
+          <button onClick={() => setState((current) => resolvePendingChoice(current, 'SKIP'))}>
+            1 Runde aussetzen
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
-  const [state, setState] = useState(() => createNewGame(5));
+  const [state, setState] = useState<GameState>(() => createNewGame(5));
 
   const livingPlayerCount = useMemo(() => state.playerTeam.filter(isAlive).length, [state.playerTeam]);
   const livingEnemyCount = useMemo(() => state.enemyTeam.filter(isAlive).length, [state.enemyTeam]);
 
   const active = getActive(state, state.turn);
-  const activeCanUseEvent = !state.winner && active.skipTurns === 0 && !state.eventPlayedThisTurn;
+  const activeCanUseEvent = !state.winner && !state.pendingChoice && active.skipTurns === 0 && !state.eventPlayedThisTurn;
+  const revealedEvent = state.lastEventId ? eventCards.find((event) => event.id === state.lastEventId) : undefined;
 
   return (
     <main className="app-shell">
       <header className="hero">
         <div>
           <h1>Paukémon</h1>
-          <p>Lokales 2-Spieler-Duell · v0.2</p>
+          <p>Lokales 2-Spieler-Duell · v0.3</p>
         </div>
         <div className="hero-actions">
           <button onClick={() => setState(createNewGame(5))}>Neues Spiel</button>
@@ -129,12 +178,21 @@ export default function App() {
             <p>
               Aktionen übrig: <strong>{state.actionsLeft}</strong>
             </p>
-            <button
-              disabled={!activeCanUseEvent}
-              onClick={() => setState((current) => playRandomEvent(current))}
-            >
-              Ereigniskarte ziehen
-            </button>
+            <div className="event-slot">
+              <button
+                disabled={!activeCanUseEvent}
+                onClick={() => setState((current) => playRandomEvent(current))}
+              >
+                Ereigniskarte ziehen
+              </button>
+              {revealedEvent && (
+                <div className="event-pop" key={`${revealedEvent.id}-${state.eventRevealNonce}`}>
+                  <img src={revealedEvent.image} alt={revealedEvent.name} />
+                  <strong>{revealedEvent.name}</strong>
+                  <span>{revealedEvent.text}</span>
+                </div>
+              )}
+            </div>
             <p className="hint">
               Pro Runde eine Attacke. Wechseln verbraucht die Aktion. Sternchen-Reaktionen laufen automatisch.
             </p>
@@ -152,6 +210,8 @@ export default function App() {
 
         <PlayerColumn owner="enemy" state={state} setState={setState} />
       </section>
+
+      <PendingChoiceDialog state={state} setState={setState} />
     </main>
   );
 }

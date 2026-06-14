@@ -80,6 +80,17 @@ export type PaukemonInstance = {
   removed: boolean;
 };
 
+export type PendingChoice = {
+  kind: 'KOPIERFLUT';
+  chooser: Owner;
+  attackerOwner: Owner;
+  targetOwner: Owner;
+  attackerUid: string;
+  targetUid: string;
+};
+
+export type KopierflutChoice = 'DAMAGE' | 'SKIP';
+
 export type GameState = {
   playerTeam: PaukemonInstance[];
   enemyTeam: PaukemonInstance[];
@@ -90,6 +101,9 @@ export type GameState = {
   eventPlayedThisTurn: boolean;
   log: string[];
   winner?: Owner;
+  pendingChoice?: PendingChoice;
+  lastEventId?: EventId;
+  eventRevealNonce: number;
 };
 
 export type Coin = 'Kopf' | 'Zahl';

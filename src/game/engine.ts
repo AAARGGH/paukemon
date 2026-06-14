@@ -1,5 +1,5 @@
 import { cardById, eventCards, paukemonCards } from '../data/cards';
-import type { AttackContext, AttackId, Coin, EventId, GameState, Owner, PaukemonCard, PaukemonInstance } from './types';
+import type { AttackContext, AttackId, Coin, EventId, GameState, KopierflutChoice, Owner, PaukemonCard, PaukemonInstance } from './types';
 
 const NATURAL_SCIENCES = ['Mathe', 'Physik', 'Chemie'];
 
@@ -239,17 +239,17 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       heal(state, context.attackerOwner, attacker.uid, 20);
       break;
 
-    case 'KOPIERFLUT': {
-      const takesDamage = Math.random() < 0.5;
-      if (takesDamage) {
-        log(state, `${targetCard.name} wählt den Kopierflut-Schaden.`);
-        damage(state, context.targetOwner, target.uid, 20);
-      } else {
-        log(state, `${targetCard.name} wählt die Verwirrung.`);
-        addSkip(state, context.targetOwner, target.uid, 1);
-      }
+    case 'KOPIERFLUT':
+      state.pendingChoice = {
+        kind: 'KOPIERFLUT',
+        chooser: context.targetOwner,
+        attackerOwner: context.attackerOwner,
+        targetOwner: context.targetOwner,
+        attackerUid: attacker.uid,
+        targetUid: target.uid,
+      };
+      log(state, `${ownerLabel(context.targetOwner)} muss wählen: 20 LP Schaden nehmen oder 1 Runde aussetzen.`);
       break;
-    }
 
     case 'KUCHEN_BACKEN_LASSEN': {
       const ownTarget = chooseMostDamagedOwn(state, context.attackerOwner);
@@ -493,7 +493,7 @@ function advanceTurn(state: GameState): void {
 
 export function executeAttack(state: GameState, attackId: AttackId): GameState {
   const next = cloneState(state);
-  if (next.winner) return next;
+  if (next.winner || next.pendingChoice) return next;
 
   ensureActiveAlive(next, 'player');
   ensureActiveAlive(next, 'enemy');
@@ -524,6 +524,39 @@ export function executeAttack(state: GameState, attackId: AttackId): GameState {
   ensureActiveAlive(next, 'enemy');
   checkWinner(next);
 
+  if (!next.winner && next.pendingChoice) return next;
+
+  if (!next.winner) {
+    next.actionsLeft -= 1;
+    if (next.actionsLeft <= 0) advanceTurn(next);
+    else processForcedSkips(next);
+  }
+
+  return next;
+}
+
+export function resolvePendingChoice(state: GameState, choice: KopierflutChoice): GameState {
+  const next = cloneState(state);
+  const pending = next.pendingChoice;
+  if (!pending || next.winner) return next;
+
+  const target = findInstance(next, pending.targetOwner, pending.targetUid);
+  if (target && isAlive(target)) {
+    const targetCard = getCard(target);
+    if (choice === 'DAMAGE') {
+      log(next, `${targetCard.name} wählt den Kopierflut-Schaden.`);
+      damage(next, pending.targetOwner, target.uid, 20);
+    } else {
+      log(next, `${targetCard.name} wählt die Verwirrung.`);
+      addSkip(next, pending.targetOwner, target.uid, 1);
+    }
+  }
+
+  next.pendingChoice = undefined;
+  ensureActiveAlive(next, 'player');
+  ensureActiveAlive(next, 'enemy');
+  checkWinner(next);
+
   if (!next.winner) {
     next.actionsLeft -= 1;
     if (next.actionsLeft <= 0) advanceTurn(next);
@@ -535,6 +568,7 @@ export function executeAttack(state: GameState, attackId: AttackId): GameState {
 
 export function switchActive(state: GameState, owner: Owner, instanceUid: string): GameState {
   const next = cloneState(state);
+  if (next.pendingChoice) return next;
   const candidate = findInstance(next, owner, instanceUid);
   if (!candidate || !isAlive(candidate)) return next;
 
@@ -549,7 +583,7 @@ export function switchActive(state: GameState, owner: Owner, instanceUid: string
 
 export function playRandomEvent(state: GameState): GameState {
   const next = cloneState(state);
-  if (next.winner || next.eventPlayedThisTurn) return next;
+  if (next.winner || next.eventPlayedThisTurn || next.pendingChoice) return next;
 
   ensureActiveAlive(next, 'player');
   ensureActiveAlive(next, 'enemy');
@@ -564,6 +598,8 @@ export function playRandomEvent(state: GameState): GameState {
 
   next.eventPlayedThisTurn = true;
   const event = eventCards[Math.floor(Math.random() * eventCards.length)];
+  next.lastEventId = event.id;
+  next.eventRevealNonce += 1;
   log(next, `Ereigniskarte: ${event.name}.`);
 
   switch (event.id as EventId) {
@@ -641,6 +677,7 @@ export function createNewGame(teamSize = 5): GameState {
     turn: 'player',
     actionsLeft: 1,
     eventPlayedThisTurn: false,
+    eventRevealNonce: 0,
     log: ['Spiel gestartet. Lokales 2-Spieler-Duell. Pro Runde ist eine Attacke erlaubt. Sternchen-Fähigkeiten reagieren automatisch.'],
   };
 }

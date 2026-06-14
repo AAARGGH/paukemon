@@ -1,5 +1,6 @@
 import type { Owner, PaukemonInstance } from '../game/types';
 import { getCard, isAlive } from '../game/engine';
+import { LpStatus } from './LpStatus';
 
 type Props = {
   instance: PaukemonInstance;
@@ -12,7 +13,6 @@ type Props = {
 export function CardView({ instance, active, selectable, onSelect }: Props) {
   const card = getCard(instance);
   const defeated = !isAlive(instance);
-  const lpPercent = Math.max(0, Math.round((instance.currentLp / card.maxLp) * 100));
 
   return (
     <button
@@ -24,10 +24,10 @@ export function CardView({ instance, active, selectable, onSelect }: Props) {
       <img src={card.image} alt={card.name} />
       <div className="card-tile-meta">
         <strong>{card.name}</strong>
-        <span>{instance.currentLp}/{card.maxLp} LP · {card.iq} IQ</span>
+        <span>{card.iq} IQ</span>
         {instance.skipTurns > 0 && <span className="badge">setzt {instance.skipTurns} aus</span>}
         {instance.chargeTurns > 0 && <span className="badge">Ladung {instance.chargeTurns}/2</span>}
-        <div className="lpbar"><div style={{ width: `${lpPercent}%` }} /></div>
+        <LpStatus current={instance.currentLp} max={card.maxLp} compact />
       </div>
     </button>
   );
