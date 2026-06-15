@@ -2272,7 +2272,7 @@ button:disabled {
 .event-draw-button {
   display: grid;
   gap: 0.65rem;
-  width: min(240px, 100%);
+  width: min(80px, 100%);
   margin: 0 auto;
   padding: 0.45rem 0.45rem 0.75rem;
   border-radius: 1.25rem;
