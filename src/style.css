@@ -2271,21 +2271,21 @@ button:disabled {
 /* v1.6 Ereigniskarten-Button & zusätzliche Auswahldialoge */
 .event-draw-button {
   display: grid;
-  gap: 0.65rem;
-  width: min(80px, 100%);
+  gap: 0.35rem;
+  width: min(80px, 50%);
   margin: 0 auto;
-  padding: 0.45rem 0.45rem 0.75rem;
-  border-radius: 1.25rem;
+  padding: 0.25rem 0.25rem 0.4rem;
+  border-radius: 0.8rem;
   background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.24;
   overflow: hidden;
 }
 
 .event-draw-button img {
   display: block;
   width: 100%;
-  border-radius: 1rem;
-  box-shadow: 0 16px 32px rgba(0,0,0,0.3);
+  border-radius: 0.55rem;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.3);
 }
 
 .event-draw-button.ready {
