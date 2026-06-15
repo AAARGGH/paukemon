@@ -80,6 +80,11 @@ export type PaukemonInstance = {
   removed: boolean;
 };
 
+export type ChoiceTargetRef = {
+  owner: Owner;
+  uid: string;
+};
+
 export type KopierflutPendingChoice = {
   kind: 'KOPIERFLUT';
   chooser: Owner;
@@ -105,12 +110,43 @@ export type FachkonferenzPendingChoice = {
   subjects: string[];
 };
 
-export type PendingChoice = KopierflutPendingChoice | ArbeitAbwaelzenPendingChoice | FachkonferenzPendingChoice;
+export type KuchenPendingChoice = {
+  kind: 'KUCHEN_BACKEN_LASSEN';
+  chooser: Owner;
+  attackerOwner: Owner;
+  attackerUid: string;
+  candidateTargets: ChoiceTargetRef[];
+};
+
+export type EsoterischeHeilungPendingChoice = {
+  kind: 'ESOTERISCHE_HEILUNG';
+  chooser: Owner;
+  attackerOwner: Owner;
+  attackerUid: string;
+  candidateTargets: ChoiceTargetRef[];
+};
+
+export type SimpelPendingChoice = {
+  kind: 'IM_SIMPEL_EINEN_TRINKEN_GEHEN';
+  chooser: Owner;
+  attackerOwner: Owner;
+  attackerUid: string;
+  candidateTargets: ChoiceTargetRef[];
+};
+
+export type PendingChoice =
+  | KopierflutPendingChoice
+  | ArbeitAbwaelzenPendingChoice
+  | FachkonferenzPendingChoice
+  | KuchenPendingChoice
+  | EsoterischeHeilungPendingChoice
+  | SimpelPendingChoice;
 
 export type KopierflutChoice = 'DAMAGE' | 'SKIP';
 export type ArbeitAbwaelzenChoice = { kind: 'HELPER'; helperUid: string };
 export type FachkonferenzChoice = { kind: 'SUBJECT'; subject: string };
-export type PendingChoiceResolution = KopierflutChoice | ArbeitAbwaelzenChoice | FachkonferenzChoice;
+export type TargetChoice = { kind: 'TARGET'; targetOwner: Owner; targetUid: string };
+export type PendingChoiceResolution = KopierflutChoice | ArbeitAbwaelzenChoice | FachkonferenzChoice | TargetChoice;
 
 export type PendingKo = {
   owner: Owner;

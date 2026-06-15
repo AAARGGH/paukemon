@@ -228,6 +228,46 @@ function PlayerColumn({ owner, state, setState, onAttack, attackFlash, dealNonce
   );
 }
 
+type TargetChoiceDialogProps = {
+  state: GameState;
+  title: string;
+  eyebrow: string;
+  description: string;
+  targets: { owner: Owner; uid: string }[];
+  onSelect: (owner: Owner, uid: string) => void;
+};
+
+function TargetChoiceDialog({ state, title, eyebrow, description, targets, onSelect }: TargetChoiceDialogProps) {
+  return (
+    <div className="choice-backdrop" role="dialog" aria-modal="true">
+      <section className="choice-dialog choice-dialog-wide">
+        <p className="eyebrow">{eyebrow}</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <div className="helper-choice-grid target-choice-grid">
+          {targets.map((targetRef) => {
+            const instance = findInstance(state, targetRef.owner, targetRef.uid);
+            if (!instance || !isAlive(instance)) return null;
+            const card = getCard(instance);
+            return (
+              <button
+                key={`${targetRef.owner}-${targetRef.uid}`}
+                className="helper-choice-card target-choice-card"
+                onClick={() => onSelect(targetRef.owner, targetRef.uid)}
+              >
+                <img src={card.image} alt={card.name} />
+                <strong>{card.name}</strong>
+                <span>{ownerLabel(targetRef.owner)}</span>
+                <small>{instance.currentLp}/{card.maxLp} LP · {card.iq} IQ</small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function PendingChoiceDialog({ state, setState }: { state: GameState; setState: Dispatch<SetStateAction<GameState>> }) {
   const pending = state.pendingChoice;
   if (!pending) return null;
@@ -254,6 +294,51 @@ function PendingChoiceDialog({ state, setState }: { state: GameState; setState: 
           </div>
         </section>
       </div>
+    );
+  }
+
+  if (pending.kind === 'KUCHEN_BACKEN_LASSEN') {
+    const attacker = findInstance(state, pending.attackerOwner, pending.attackerUid);
+    const attackerName = attacker ? getCard(attacker).name : 'Copymon';
+    return (
+      <TargetChoiceDialog
+        state={state}
+        title="Kuchen backen lassen!"
+        eyebrow={`Auswahl für ${ownerLabel(pending.chooser)}`}
+        description={`${attackerName} fragt: Wer bekommt den Kuchen?`}
+        targets={pending.candidateTargets}
+        onSelect={(targetOwner, targetUid) => setState((current) => resolvePendingChoice(current, { kind: 'TARGET', targetOwner, targetUid }))}
+      />
+    );
+  }
+
+  if (pending.kind === 'ESOTERISCHE_HEILUNG') {
+    const attacker = findInstance(state, pending.attackerOwner, pending.attackerUid);
+    const attackerName = attacker ? getCard(attacker).name : 'Esoteriko';
+    return (
+      <TargetChoiceDialog
+        state={state}
+        title="Esoterische Heilung!"
+        eyebrow={`Auswahl für ${ownerLabel(pending.chooser)}`}
+        description={`${attackerName} darf ein verletztes Paukémon mit IQ unter 91 heilen. Wer wird geheilt?`}
+        targets={pending.candidateTargets}
+        onSelect={(targetOwner, targetUid) => setState((current) => resolvePendingChoice(current, { kind: 'TARGET', targetOwner, targetUid }))}
+      />
+    );
+  }
+
+  if (pending.kind === 'IM_SIMPEL_EINEN_TRINKEN_GEHEN') {
+    const attacker = findInstance(state, pending.attackerOwner, pending.attackerUid);
+    const attackerName = attacker ? getCard(attacker).name : 'Nasenmann';
+    return (
+      <TargetChoiceDialog
+        state={state}
+        title="Im Simpel einen Trinken gehen!"
+        eyebrow={`Auswahl für ${ownerLabel(pending.chooser)}`}
+        description={`${attackerName} sucht Gesellschaft. Mit wem geht er trinken? Eigene und gegnerische Paukémon sind auswählbar.`}
+        targets={pending.candidateTargets}
+        onSelect={(targetOwner, targetUid) => setState((current) => resolvePendingChoice(current, { kind: 'TARGET', targetOwner, targetUid }))}
+      />
     );
   }
 
@@ -500,11 +585,15 @@ export default function App() {
             </p>
             <div className="event-slot">
               <button
+                className={`event-draw-button ${activeCanUseEvent ? 'ready' : 'charging'}`}
                 disabled={!activeCanUseEvent}
                 title={activeCanUseEvent ? 'Ereigniskarte ziehen' : `Noch nicht bereit: ${eventReadyLabel(activeEventCharge)}`}
                 onClick={() => setState((current) => playRandomEvent(current))}
               >
-                {activeCanUseEvent ? 'Ereigniskarte ziehen' : `Ereignis lädt (${eventReadyLabel(activeEventCharge)})`}
+                <img src="/event-button.jpg" alt="Ereigniskarte" />
+                <span className="event-button-caption">
+                  {activeCanUseEvent ? 'Ereigniskarte ziehen' : `Ereignis lädt (${eventReadyLabel(activeEventCharge)})`}
+                </span>
               </button>
               <div className="event-charge-board">
                 <EventChargeMeter owner="player" charge={state.eventCharge?.player ?? 0} active={state.turn === 'player'} />

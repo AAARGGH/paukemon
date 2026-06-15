@@ -2267,3 +2267,68 @@ button:disabled {
     font-size: 0.72rem !important;
   }
 }
+
+/* v1.6 Ereigniskarten-Button & zusätzliche Auswahldialoge */
+.event-draw-button {
+  display: grid;
+  gap: 0.65rem;
+  width: min(240px, 100%);
+  margin: 0 auto;
+  padding: 0.45rem 0.45rem 0.75rem;
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+  overflow: hidden;
+}
+
+.event-draw-button img {
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.3);
+}
+
+.event-draw-button.ready {
+  background: rgba(242, 201, 76, 0.12);
+  box-shadow: 0 0 0 1px rgba(242, 201, 76, 0.32), 0 16px 40px rgba(242, 201, 76, 0.16);
+}
+
+.event-draw-button.ready img {
+  box-shadow: 0 0 0 2px rgba(242, 201, 76, 0.22), 0 16px 36px rgba(0,0,0,0.36);
+}
+
+.event-draw-button.charging img {
+  filter: saturate(0.9) brightness(0.92);
+}
+
+.event-draw-button:disabled {
+  opacity: 0.82;
+}
+
+.event-button-caption {
+  display: block;
+  padding: 0 0.2rem;
+  color: #efe4ff;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.event-draw-button.ready .event-button-caption {
+  color: #f2c94c;
+}
+
+.target-choice-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.target-choice-card span {
+  color: #33359a;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.target-choice-card small {
+  color: #4c385d;
+}

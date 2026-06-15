@@ -2,6 +2,7 @@ import { cardById, eventCards, paukemonCards } from '../data/cards';
 import type {
   AttackContext,
   AttackId,
+  ChoiceTargetRef,
   Coin,
   EventId,
   GameState,
@@ -174,6 +175,47 @@ function chooseMostDamagedWithIqBelow(state: GameState, iq: number): { owner: Ow
   return candidates.sort((a, b) => b.missing - a.missing)[0];
 }
 
+
+function missingLp(instance: PaukemonInstance): number {
+  return getCard(instance).maxLp - instance.currentLp;
+}
+
+function makeTargetRef(owner: Owner, uid: string): ChoiceTargetRef {
+  return { owner, uid };
+}
+
+function hasTargetRef(targets: ChoiceTargetRef[], owner: Owner, uid: string): boolean {
+  return targets.some((target) => target.owner === owner && target.uid === uid);
+}
+
+function ownDamagedTargets(state: GameState, owner: Owner): ChoiceTargetRef[] {
+  return livingTeam(state, owner)
+    .filter((instance) => missingLp(instance) > 0)
+    .map((instance) => makeTargetRef(owner, instance.uid));
+}
+
+function damagedTargetsWithIqBelow(state: GameState, iq: number): ChoiceTargetRef[] {
+  const candidates: ChoiceTargetRef[] = [];
+  for (const owner of ['player', 'enemy'] as const) {
+    for (const instance of livingTeam(state, owner)) {
+      const card = getCard(instance);
+      if (card.iq < iq && missingLp(instance) > 0) candidates.push(makeTargetRef(owner, instance.uid));
+    }
+  }
+  return candidates;
+}
+
+function drinkTargets(state: GameState, attackerOwner: Owner, attackerUid: string): ChoiceTargetRef[] {
+  const candidates: ChoiceTargetRef[] = [];
+  for (const owner of ['player', 'enemy'] as const) {
+    for (const instance of livingTeam(state, owner)) {
+      if (owner === attackerOwner && instance.uid === attackerUid) continue;
+      candidates.push(makeTargetRef(owner, instance.uid));
+    }
+  }
+  return candidates;
+}
+
 function directDamageEstimate(state: GameState, context: AttackContext): number {
   const attacker = findInstance(state, context.attackerOwner, context.attackerUid);
   const target = findInstance(state, context.targetOwner, context.targetUid);
@@ -244,14 +286,20 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
         log(state, `Die Attacke von ${attackerCard.name} ist wirkungslos.`);
         return true;
       }
+      log(state, `${targetCard.name} wirft Kopf, es passiert nichts.`);
     }
 
     if (reaction.id === 'PIEPSER') {
       const result = flipCoin(state, `${targetCard.name} nutzt Piepser*`);
       log(state, `${targetCard.name} nutzt Piepser*: Münzwurf = ${result}.`);
-      if (result === 'Zahl' && switchToFirstLivingOther(state, context.targetOwner, target.uid)) {
-        log(state, `${targetCard.name} entkommt der Attacke.`);
-        return true;
+      if (result === 'Zahl') {
+        if (switchToFirstLivingOther(state, context.targetOwner, target.uid)) {
+          log(state, `${targetCard.name} entkommt der Attacke.`);
+          return true;
+        }
+        log(state, `${targetCard.name} wirft Zahl, kann aber nicht entkommen. Es passiert nichts.`);
+      } else {
+        log(state, `${targetCard.name} wirft Kopf, es passiert nichts.`);
       }
     }
 
@@ -268,6 +316,7 @@ function resolveDefenderReactions(state: GameState, context: AttackContext): boo
         }
         return true;
       }
+      log(state, `${targetCard.name} wirft Zahl, es passiert nichts.`);
     }
   }
 
@@ -315,9 +364,20 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
       break;
 
     case 'KUCHEN_BACKEN_LASSEN': {
-      const ownTarget = chooseMostDamagedOwn(state, context.attackerOwner);
-      if (!ownTarget) log(state, `Niemand braucht gerade Kuchen.`);
-      else setToOnlyTenDamage(state, context.attackerOwner, ownTarget.uid);
+      const candidates = ownDamagedTargets(state, context.attackerOwner);
+      if (candidates.length === 0) {
+        log(state, `Niemand braucht gerade Kuchen.`);
+        break;
+      }
+
+      state.pendingChoice = {
+        kind: 'KUCHEN_BACKEN_LASSEN',
+        chooser: context.attackerOwner,
+        attackerOwner: context.attackerOwner,
+        attackerUid: attacker.uid,
+        candidateTargets: candidates,
+      };
+      log(state, `${ownerLabel(context.attackerOwner)} entscheidet, wer den Kuchen bekommt.`);
       break;
     }
 
@@ -335,9 +395,20 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
     }
 
     case 'ESOTERISCHE_HEILUNG': {
-      const healTarget = chooseMostDamagedWithIqBelow(state, 91);
-      if (!healTarget) log(state, `Esoterische Heilung findet kein verletztes Paukémon mit IQ unter 91.`);
-      else heal(state, healTarget.owner, healTarget.instance.uid, 30);
+      const candidates = damagedTargetsWithIqBelow(state, 91);
+      if (candidates.length === 0) {
+        log(state, `Esoterische Heilung findet kein verletztes Paukémon mit IQ unter 91.`);
+        break;
+      }
+
+      state.pendingChoice = {
+        kind: 'ESOTERISCHE_HEILUNG',
+        chooser: context.attackerOwner,
+        attackerOwner: context.attackerOwner,
+        attackerUid: attacker.uid,
+        candidateTargets: candidates,
+      };
+      log(state, `${ownerLabel(context.attackerOwner)} wählt, wer durch Esoterische Heilung geheilt wird.`);
       break;
     }
 
@@ -466,20 +537,27 @@ function applyAttackEffect(state: GameState, context: AttackContext): void {
           toTeam.push(converted);
           log(state, `${targetCard.name} läuft zu ${ownerLabel(context.attackerOwner)} über.`);
         }
+      } else {
+        log(state, `${attackerCard.name} wirft Zahl, es passiert nichts.`);
       }
       break;
     }
 
     case 'IM_SIMPEL_EINEN_TRINKEN_GEHEN': {
-      const other = livingTeam(state, context.attackerOwner).find((item) => item.uid !== attacker.uid);
-      if (!other) {
+      const candidates = drinkTargets(state, context.attackerOwner, attacker.uid);
+      if (candidates.length === 0) {
         log(state, `${attackerCard.name} findet niemanden für den Simpel.`);
         break;
       }
-      addSkip(state, context.attackerOwner, attacker.uid, 2);
-      addSkip(state, context.attackerOwner, other.uid, 2);
-      heal(state, context.attackerOwner, attacker.uid, 20);
-      heal(state, context.attackerOwner, other.uid, 20);
+
+      state.pendingChoice = {
+        kind: 'IM_SIMPEL_EINEN_TRINKEN_GEHEN',
+        chooser: context.attackerOwner,
+        attackerOwner: context.attackerOwner,
+        attackerUid: attacker.uid,
+        candidateTargets: candidates,
+      };
+      log(state, `${ownerLabel(context.attackerOwner)} wählt, mit wem ${attackerCard.name} einen Trinken gehen will.`);
       break;
     }
 
@@ -657,6 +735,49 @@ export function resolvePendingChoice(state: GameState, choice: PendingChoiceReso
     for (const owner of ['player', 'enemy'] as const) {
       for (const instance of livingTeam(next, owner)) {
         if (getCard(instance).subjects.includes(choice.subject)) addSkip(next, owner, instance.uid, 3);
+      }
+    }
+  } else if (pending.kind === 'KUCHEN_BACKEN_LASSEN') {
+    if (typeof choice === 'string' || choice.kind !== 'TARGET') return next;
+    if (!hasTargetRef(pending.candidateTargets, choice.targetOwner, choice.targetUid)) {
+      log(next, `Der Kuchen konnte niemandem gegeben werden.`);
+    } else {
+      const recipient = findInstance(next, choice.targetOwner, choice.targetUid);
+      if (!recipient || !isAlive(recipient)) {
+        log(next, `Der Kuchen konnte niemandem gegeben werden.`);
+      } else {
+        log(next, `${getCard(recipient).name} bekommt den Kuchen.`);
+        setToOnlyTenDamage(next, choice.targetOwner, choice.targetUid);
+      }
+    }
+  } else if (pending.kind === 'ESOTERISCHE_HEILUNG') {
+    if (typeof choice === 'string' || choice.kind !== 'TARGET') return next;
+    if (!hasTargetRef(pending.candidateTargets, choice.targetOwner, choice.targetUid)) {
+      log(next, `Die Esoterische Heilung findet kein gültiges Ziel.`);
+    } else {
+      const recipient = findInstance(next, choice.targetOwner, choice.targetUid);
+      if (!recipient || !isAlive(recipient)) {
+        log(next, `Die Esoterische Heilung findet kein gültiges Ziel.`);
+      } else {
+        log(next, `${getCard(recipient).name} wird esoterisch geheilt.`);
+        heal(next, choice.targetOwner, choice.targetUid, 30);
+      }
+    }
+  } else if (pending.kind === 'IM_SIMPEL_EINEN_TRINKEN_GEHEN') {
+    if (typeof choice === 'string' || choice.kind !== 'TARGET') return next;
+    if (!hasTargetRef(pending.candidateTargets, choice.targetOwner, choice.targetUid)) {
+      log(next, `Der Simpel-Ausflug kommt nicht zustande.`);
+    } else {
+      const attacker = findInstance(next, pending.attackerOwner, pending.attackerUid);
+      const companion = findInstance(next, choice.targetOwner, choice.targetUid);
+      if (!attacker || !companion || !isAlive(attacker) || !isAlive(companion)) {
+        log(next, `Der Simpel-Ausflug kommt nicht zustande.`);
+      } else {
+        log(next, `${getCard(attacker).name} geht mit ${getCard(companion).name} einen Trinken.`);
+        addSkip(next, pending.attackerOwner, pending.attackerUid, 2);
+        addSkip(next, choice.targetOwner, choice.targetUid, 2);
+        heal(next, pending.attackerOwner, pending.attackerUid, 20);
+        heal(next, choice.targetOwner, choice.targetUid, 20);
       }
     }
   }
