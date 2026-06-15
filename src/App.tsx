@@ -20,7 +20,7 @@ import {
 } from './game/engine';
 import type { AttackId, GameState, Owner, PaukemonInstance } from './game/types';
 
-const assetPath = {fileName: string) => `${import.meta.env.BASE_URL}${fileName}`;
+const assetPath = (fileName: string) => `${import.meta.env.BASE_URL}${fileName}`;
 
 function ownerLabel(owner: Owner): string {
   return owner === 'player' ? 'Spieler 1' : 'Spieler 2';
