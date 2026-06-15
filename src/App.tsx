@@ -590,7 +590,7 @@ export default function App() {
                 title={activeCanUseEvent ? 'Ereigniskarte ziehen' : `Noch nicht bereit: ${eventReadyLabel(activeEventCharge)}`}
                 onClick={() => setState((current) => playRandomEvent(current))}
               >
-                <img src="/event-button.jpg" alt="Ereigniskarte" />
+                <img src="{assetPath('event-button.jpg')}" alt="Ereigniskarte" />
                 <span className="event-button-caption">
                   {activeCanUseEvent ? 'Ereigniskarte ziehen' : `Ereignis lädt (${eventReadyLabel(activeEventCharge)})`}
                 </span>
