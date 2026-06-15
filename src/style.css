@@ -2273,7 +2273,6 @@ button:disabled {
   display: grid;
   gap: 0.35rem;
   width: min(80px, 50%);
-  width: 50%;
   margin: 0 auto;
   padding: 0.25rem 0.25rem 0.4rem;
   border-radius: 0.8rem;
@@ -2332,4 +2331,26 @@ button:disabled {
 
 .target-choice-card small {
   color: #4c385d;
+}
+
+.event-slot > button.event-draw-button {
+  width: 96px;
+  max-width: 96px;
+  min-width: 0;
+  justify-self: center;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.25rem 0.25rem 0.4rem;
+  border-radius: 0.8rem;
+}
+
+.event-slot > button.event-draw-button img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.55rem;
+}
+
+.event-slot > button.event-draw-button .event-button-caption {
+  font-size: 0.72rem;
+  line-height: 1.15;
 }
