@@ -2273,6 +2273,7 @@ button:disabled {
   display: grid;
   gap: 0.35rem;
   width: min(80px, 50%);
+  width: 50%;
   margin: 0 auto;
   padding: 0.25rem 0.25rem 0.4rem;
   border-radius: 0.8rem;
